@@ -1,7 +1,7 @@
 # bau
 A collection of utilities for [`bevy`] apps.
 
-Each module is a treated as it's own utility component.
+Each module is treated as it's own utility component.
 
 ## Features
 - Parallel events - write to an event channel from multiple systems in parallel
