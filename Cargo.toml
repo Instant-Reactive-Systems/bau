@@ -1,0 +1,18 @@
+[package]
+name = "bau"
+edition = "2021"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wire = { git =  "https://github.com/Instant-Reactive-Systems/wire.git" }
+bevy = { version = "0.12", default-features = false, features = ["multi-threaded"] }
+log = "0.4.20"
+bimap = "0.6"
+
+[features]
+trace = ["bevy/trace"]
+trace_chrome = ["bevy/trace_chrome"]
+trace_tracy = ["bevy/trace_tracy"]
+trace_tracy_memory = ["bevy/trace_tracy_memory"]
