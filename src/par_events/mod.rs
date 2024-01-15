@@ -667,8 +667,8 @@ pub fn event_update_system<E: Event>(par_events: ResMut<ParEvents<E>>) {
 }
 
 /// A run condition that checks if the event’s [`event_update_system`] needs to run or not.
-pub fn event_update_condition<E: Event>(reader: ParEventReader<E>) -> bool {
-	reader.reader.last_event_count != reader.events.event_count.load(Ordering::Acquire)
+pub fn event_update_condition<E: Event>(events: Res<ParEvents<E>>) -> bool {
+	unsafe { events.is_empty() }
 }
 
 // almost all tests are mimicked from [bevy's tests](https://github.com/bevyengine/bevy/blob/main/crates/bevy_ecs/src/event.rs#L816-L1213) for Events
