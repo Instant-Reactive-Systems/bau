@@ -2,11 +2,7 @@
 //!
 //! [`bevy::app::App`]: https://docs.rs/bevy/latest/bevy/app/struct.App.html
 
-use std::{
-	cmp::PartialEq,
-	fmt::Debug,
-	sync::atomic::{AtomicU64, Ordering},
-};
+use std::{cmp::PartialEq, fmt::Debug};
 
 use bevy::{
 	ecs::{event::ManualEventReader, prelude::*, query::WorldQuery, schedule::ScheduleLabel},
@@ -23,7 +19,7 @@ impl<T: bevy::prelude::Event + Clone + Debug + PartialEq> AssertHelper for T {}
 /// Extends the `App` trait with additional utility methods.
 pub trait AppExt {
 	/// Sends an action from the specified target to the world.
-	fn send_action<A: Event>(&mut self, target: impl Into<wire::Target>, action: A) -> u64;
+	fn send_action<A: Event>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId;
 	/// Observes all events of the specified type.
 	fn observe_events<E: Event + Clone>(&mut self) -> Vec<E>;
 	/// Observes all par events of the specified type.
@@ -47,13 +43,10 @@ pub trait AppExt {
 }
 
 impl AppExt for bevy::app::App {
-	fn send_action<A: Event>(&mut self, target: impl Into<wire::Target>, action: A) -> u64 {
-		static CORRELATION_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
-		let correlation_id = CORRELATION_ID_COUNTER.fetch_add(1, Ordering::AcqRel);
-
-		self.world.send_event(wire::Req::<A>::new(target.into(), action, correlation_id));
-
-		correlation_id
+	fn send_action<A: Event>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId {
+		let corrid = wire::CorrelationId::new_random();
+		self.world.send_event(wire::Req::<A>::new(target.into(), action, corrid));
+		corrid
 	}
 
 	fn observe_events<E: Event + Clone>(&mut self) -> Vec<E> {
