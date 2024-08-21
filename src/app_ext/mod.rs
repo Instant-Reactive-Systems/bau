@@ -44,7 +44,7 @@ pub trait AppExt {
 
 impl AppExt for bevy::app::App {
 	fn send_action<A: Event>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId {
-		let corrid = wire::CorrelationId::new_random();
+		let corrid = wire::CorrelationId::new_v4();
 		self.world.send_event(wire::Req::<A>::new(target.into(), action, corrid));
 		corrid
 	}

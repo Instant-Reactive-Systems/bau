@@ -1,6 +1,6 @@
 //! # bau
 //! A collection of utilities for [`bevy`] apps.
-//! 
+//!
 //! Each module is treated as it's own utility component.
 //!
 //! ## Features
@@ -12,6 +12,7 @@
 //! - Auxiliary index - a map of entities to a custom ID type, used for fast lookup of entities by an arbitrary ID
 //! - Tick deferred commands - schedule commands to run at the end of the tick, after all systems have run
 //! - App utility extensions - adds useful methods to a [`bevy::app::App`] used for testing and debugging
+//! - WebSocket communication - sets up everything in order to communicate via WebSockets
 //!
 //! [`bevy`]: https://bevyengine.org/
 //! [`bevy::app::App`]: https://docs.rs/bevy/latest/bevy/app/struct.App.html
@@ -23,6 +24,7 @@ pub mod schedules;
 pub mod logging;
 pub mod auxiliary_index;
 pub mod tick_deferred_commands;
+pub mod ws;
 
 pub mod prelude {
 	pub use crate::{app_ext::*, auxiliary_index::*, defer_delete::*, logging::*, par_events::*, schedules::*, tick_deferred_commands::*};
