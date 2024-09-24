@@ -6,6 +6,12 @@ pub struct Event<T: Send + Sync + 'static> {
 	inner: T,
 }
 
+impl<T: Send + Sync + 'static> Event<T> {
+	pub fn new(inner: T) -> Self {
+		Self { inner }
+	}
+}
+
 impl<T: Send + Sync + 'static> bevy::ecs::event::Event for Event<T> {}
 
 impl<T: Send + Sync + 'static> Event<T> {
@@ -59,5 +65,11 @@ impl<T: Eq + Send + Sync + 'static> Eq for Event<T> {}
 impl<T: std::hash::Hash + Send + Sync + 'static> std::hash::Hash for Event<T> {
 	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
 		self.inner.hash(state)
+	}
+}
+
+impl<T: Send + Sync + 'static> std::convert::From<T> for Event<T> {
+	fn from(inner: T) -> Self {
+		Self { inner }
 	}
 }
