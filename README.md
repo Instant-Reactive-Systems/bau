@@ -22,5 +22,5 @@ Each module is treated as it's own utility component.
 
 ```toml
 [dependencies]
-wire = { git = "https://github.com/Instant-Reactive-Systems/bau.git" }
+bau = { git = "ssh://git@github.com/Instant-Reactive-Systems/bau.git" }
 ```
