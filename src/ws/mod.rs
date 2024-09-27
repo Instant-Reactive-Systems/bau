@@ -180,6 +180,7 @@ pub fn sender_msgpack<ResE, ErrE>(
 	}
 }
 
+#[allow(unused)]
 fn sender_impl(
 	targets: &wire::Targets,
 	msg: WsMessage,
@@ -203,7 +204,7 @@ fn sender_impl(
 						wire::AuthTarget::All(user_id) => {
 							let Some(sessions) = user_sessions_map.get(&user_id) else {
 								// we don't care if the session phased out by this point, just skip it
-								return
+								return;
 							};
 							for session_id in sessions.iter() {
 								let entity = session_to_entity_map.get_by_left(&session_id).expect("should exist here");
@@ -216,7 +217,7 @@ fn sender_impl(
 						wire::AuthTarget::Specific(_user_id, session_id) => {
 							let Some(entity) = session_to_entity_map.get_by_left(&session_id) else {
 								// we don't care if the session phased out by this point, just skip it
-								return
+								return;
 							};
 							let mut writer = query.get_mut(*entity).expect("should exist here");
 							if let Err(err) = block_on(writer.send(msg.clone())) {
@@ -227,7 +228,7 @@ fn sender_impl(
 					wire::Target::Anon(session_id) => {
 						let Some(entity) = session_to_entity_map.get_by_left(&session_id) else {
 							// we don't care if the session phased out by this point, just skip it
-							return
+							return;
 						};
 						let mut writer = query.get_mut(*entity).expect("should exist here");
 						if let Err(err) = block_on(writer.send(msg.clone())) {
@@ -293,7 +294,11 @@ pub fn listener_json<ReqE, ErrE>(
 			let msg = match msg {
 				Ok(msg) => msg,
 				Err(err) => {
-					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::SocketError(err.to_string()), corrid)));
+					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(
+						target,
+						wire::NetworkError::SocketError(err.to_string()),
+						corrid,
+					)));
 
 					if let Some(sessions) = user_sessions_map.get_mut(&target.id()) {
 						// delete the user from the sessions map if this is his last session
@@ -314,7 +319,11 @@ pub fn listener_json<ReqE, ErrE>(
 					let action = match serde_json::from_slice::<ReqE>(&bytes) {
 						Ok(action) => action,
 						Err(..) => {
-							err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid)));
+							err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(
+								target,
+								wire::NetworkError::InvalidMessage,
+								corrid,
+							)));
 							continue;
 						},
 					};
@@ -333,7 +342,11 @@ pub fn listener_json<ReqE, ErrE>(
 					}
 				},
 				_ => {
-					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid)));
+					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(
+						target,
+						wire::NetworkError::InvalidMessage,
+						corrid,
+					)));
 					continue;
 				},
 			}
@@ -363,7 +376,11 @@ pub fn listener_msgpack<ReqE, ErrE>(
 			let msg = match msg {
 				Ok(msg) => msg,
 				Err(err) => {
-					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::SocketError(err.to_string()), corrid)));
+					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(
+						target,
+						wire::NetworkError::SocketError(err.to_string()),
+						corrid,
+					)));
 
 					if let Some(sessions) = user_sessions_map.get_mut(&target.id()) {
 						// delete the user from the sessions map if this is his last session
@@ -384,7 +401,11 @@ pub fn listener_msgpack<ReqE, ErrE>(
 					let action = match rmp_serde::from_slice::<ReqE>(&bytes) {
 						Ok(action) => action,
 						Err(..) => {
-							err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid)));
+							err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(
+								target,
+								wire::NetworkError::InvalidMessage,
+								corrid,
+							)));
 							continue;
 						},
 					};
@@ -403,7 +424,11 @@ pub fn listener_msgpack<ReqE, ErrE>(
 					}
 				},
 				_ => {
-					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid)));
+					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(
+						target,
+						wire::NetworkError::InvalidMessage,
+						corrid,
+					)));
 					continue;
 				},
 			}

@@ -1,7 +1,5 @@
 //! Logging utilities.
 
-use bevy::prelude::Event;
-
 use crate::par_events::ParEventReader;
 
 use std::ops::Deref;
@@ -14,7 +12,7 @@ use std::ops::Deref;
 ///
 /// [`wire::Error<E>`]: https://github.com/Instant-Reactive-Systems/wire/blob/master/src/error.rs#L12
 /// [`bevy`]: https://bevyengine.org/
-pub fn log_errors<E: Event + std::fmt::Debug>(mut err_reader: ParEventReader<crate::event_wrapper::Event<wire::Error<E>>>) {
+pub fn log_errors<E: Send + Sync + std::fmt::Debug + 'static>(mut err_reader: ParEventReader<crate::event_wrapper::Event<wire::Error<E>>>) {
 	for err in err_reader.read() {
 		log::error!("{:?}", err.deref());
 	}
@@ -28,7 +26,7 @@ pub fn log_errors<E: Event + std::fmt::Debug>(mut err_reader: ParEventReader<cra
 ///
 /// [`wire::Res<E>`]: https://github.com/Instant-Reactive-Systems/wire/blob/master/src/res.rs#L8
 /// [`bevy`]: https://bevyengine.org/
-pub fn log_responses<E: Event + std::fmt::Debug>(mut reader: ParEventReader<crate::event_wrapper::Event<wire::Res<E>>>) {
+pub fn log_responses<E: Send + Sync + std::fmt::Debug + 'static>(mut reader: ParEventReader<crate::event_wrapper::Event<wire::Res<E>>>) {
 	for t in reader.read() {
 		log::info!("{:?}", t.deref());
 	}
