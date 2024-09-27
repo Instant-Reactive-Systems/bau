@@ -133,8 +133,8 @@ impl From<SessionId> for wire::SessionId {
 /// Sends events (in json format) to connected sessions.
 #[cfg(feature = "json")]
 pub fn sender_json<ResE, ErrE>(
-	mut res_reader: ParEventReader<wire::Res<ResE>>,
-	mut err_reader: ParEventReader<wire::Error<ErrE>>,
+	mut res_reader: ParEventReader<crate::event_wrapper::Event<wire::Res<ResE>>>,
+	mut err_reader: ParEventReader<crate::event_wrapper::Event<wire::Error<ErrE>>>,
 	user_sessions_map: Res<UserSessionsMap>,
 	session_to_entity_map: Res<SessionToEntityMap>,
 	mut query: Query<&mut WsWrite>,
@@ -158,8 +158,8 @@ pub fn sender_json<ResE, ErrE>(
 /// Sends events (in msgpack format) to connected sessions.
 #[cfg(feature = "msgpack")]
 pub fn sender_msgpack<ResE, ErrE>(
-	mut res_reader: ParEventReader<wire::Res<ResE>>,
-	mut err_reader: ParEventReader<wire::Error<ErrE>>,
+	mut res_reader: ParEventReader<crate::event_wrapper::Event<wire::Res<ResE>>>,
+	mut err_reader: ParEventReader<crate::event_wrapper::Event<wire::Error<ErrE>>>,
 	user_sessions_map: Res<UserSessionsMap>,
 	session_to_entity_map: Res<SessionToEntityMap>,
 	mut query: Query<&mut WsWrite>,
@@ -245,8 +245,8 @@ pub fn acceptor(
 	mut commands: Commands,
 	new_conns: Res<WsConns>,
 	mut user_sessions_map: ResMut<UserSessionsMap>,
-	mut conn_writer: EventWriter<wire::Connected<wire::Undetermined>>,
-	mut first_conn_writer: EventWriter<wire::FirstConnected<wire::Undetermined>>,
+	mut conn_writer: EventWriter<crate::event_wrapper::Event<wire::Connected<wire::Undetermined>>>,
+	mut first_conn_writer: EventWriter<crate::event_wrapper::Event<wire::FirstConnected<wire::Undetermined>>>,
 ) {
 	let new_conns = new_conns.take(); // blocks, but should be brief
 
@@ -262,10 +262,10 @@ pub fn acceptor(
 		// track how many sessions the user has active (in order to report status updates about his connection)
 		if let Some(sessions) = user_sessions_map.get_mut(&user_id) {
 			sessions.push(session_id);
-			conn_writer.send(wire::Connected::new(user_id, session_id));
+			conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id, session_id)));
 		} else {
 			user_sessions_map.insert(user_id, session_id);
-			first_conn_writer.send(wire::FirstConnected::new(user_id, session_id));
+			first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id, session_id)));
 		}
 	}
 }
@@ -274,9 +274,9 @@ pub fn acceptor(
 #[cfg(feature = "json")]
 pub fn listener_json<ReqE, ErrE>(
 	mut commands: Commands,
-	mut req_writer: EventWriter<wire::Req<ReqE>>,
-	mut disconn_writer: EventWriter<wire::Disconnected<wire::Undetermined>>,
-	err_writer: ParEventWriter<wire::Error<ErrE>>,
+	mut req_writer: EventWriter<crate::event_wrapper::Event<wire::Req<ReqE>>>,
+	mut disconn_writer: EventWriter<crate::event_wrapper::Event<wire::Disconnected<wire::Undetermined>>>,
+	err_writer: ParEventWriter<crate::event_wrapper::Event<wire::Error<ErrE>>>,
 	mut user_sessions_map: ResMut<UserSessionsMap>,
 	mut query: Query<(Entity, &SessionId, &UserId, &mut WsRead)>,
 ) where
@@ -293,14 +293,14 @@ pub fn listener_json<ReqE, ErrE>(
 			let msg = match msg {
 				Ok(msg) => msg,
 				Err(err) => {
-					err_writer.send(wire::Error::new(target, wire::NetworkError::SocketError(err.to_string()), corrid));
+					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::SocketError(err.to_string()), corrid)));
 
 					if let Some(sessions) = user_sessions_map.get_mut(&target.id()) {
 						// delete the user from the sessions map if this is his last session
 						if sessions.len() == 1 {
 							user_sessions_map.remove(&target.id());
 							commands.entity(entity).despawn();
-							disconn_writer.send(wire::Disconnected::new(user_id.0, session_id.0));
+							disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
 							break;
 						}
 					}
@@ -314,13 +314,12 @@ pub fn listener_json<ReqE, ErrE>(
 					let action = match serde_json::from_slice::<ReqE>(&bytes) {
 						Ok(action) => action,
 						Err(..) => {
-							err_writer.send(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid));
+							err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid)));
 							continue;
 						},
 					};
 
-					let req = wire::Req::new(target, action, corrid);
-					req_writer.send(req);
+					req_writer.send(crate::event_wrapper::Event::new(wire::Req::new(target, action, corrid)));
 				},
 				WsMessage::Close(..) => {
 					if let Some(sessions) = user_sessions_map.get_mut(&target.id()) {
@@ -328,13 +327,13 @@ pub fn listener_json<ReqE, ErrE>(
 						if sessions.len() == 1 {
 							user_sessions_map.remove(&target.id());
 							commands.entity(entity).despawn();
-							disconn_writer.send(wire::Disconnected::new(user_id.0, session_id.0));
+							disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
 							break;
 						}
 					}
 				},
 				_ => {
-					err_writer.send(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid));
+					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid)));
 					continue;
 				},
 			}
@@ -345,9 +344,9 @@ pub fn listener_json<ReqE, ErrE>(
 #[cfg(feature = "msgpack")]
 pub fn listener_msgpack<ReqE, ErrE>(
 	mut commands: Commands,
-	mut req_writer: EventWriter<wire::Req<ReqE>>,
-	mut disconn_writer: EventWriter<wire::Disconnected<wire::Undetermined>>,
-	err_writer: ParEventWriter<wire::Error<ErrE>>,
+	mut req_writer: EventWriter<crate::event_wrapper::Event<wire::Req<ReqE>>>,
+	mut disconn_writer: EventWriter<crate::event_wrapper::Event<wire::Disconnected<wire::Undetermined>>>,
+	err_writer: ParEventWriter<crate::event_wrapper::Event<wire::Error<ErrE>>>,
 	mut user_sessions_map: ResMut<UserSessionsMap>,
 	mut query: Query<(Entity, &SessionId, &UserId, &mut WsRead)>,
 ) where
@@ -364,14 +363,14 @@ pub fn listener_msgpack<ReqE, ErrE>(
 			let msg = match msg {
 				Ok(msg) => msg,
 				Err(err) => {
-					err_writer.send(wire::Error::new(target, wire::NetworkError::SocketError(err.to_string()), corrid));
+					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::SocketError(err.to_string()), corrid)));
 
 					if let Some(sessions) = user_sessions_map.get_mut(&target.id()) {
 						// delete the user from the sessions map if this is his last session
 						if sessions.len() == 1 {
 							user_sessions_map.remove(&target.id());
 							commands.entity(entity).despawn();
-							disconn_writer.send(wire::Disconnected::new(user_id.0, session_id.0));
+							disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
 							break;
 						}
 					}
@@ -385,13 +384,12 @@ pub fn listener_msgpack<ReqE, ErrE>(
 					let action = match rmp_serde::from_slice::<ReqE>(&bytes) {
 						Ok(action) => action,
 						Err(..) => {
-							err_writer.send(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid));
+							err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid)));
 							continue;
 						},
 					};
 
-					let req = wire::Req::new(target, action, corrid);
-					req_writer.send(req);
+					req_writer.send(crate::event_wrapper::Event::new(wire::Req::new(target, action, corrid)));
 				},
 				WsMessage::Close(..) => {
 					if let Some(sessions) = user_sessions_map.get_mut(&target.id()) {
@@ -399,13 +397,13 @@ pub fn listener_msgpack<ReqE, ErrE>(
 						if sessions.len() == 1 {
 							user_sessions_map.remove(&target.id());
 							commands.entity(entity).despawn();
-							disconn_writer.send(wire::Disconnected::new(user_id.0, session_id.0));
+							disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
 							break;
 						}
 					}
 				},
 				_ => {
-					err_writer.send(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid));
+					err_writer.send(crate::event_wrapper::Event::new(wire::Error::new(target, wire::NetworkError::InvalidMessage, corrid)));
 					continue;
 				},
 			}
