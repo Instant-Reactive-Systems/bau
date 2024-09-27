@@ -19,7 +19,7 @@ impl<T: Send + Sync + Clone + Debug + PartialEq + 'static> AssertHelper for T {}
 /// Extends the `App` trait with additional utility methods.
 pub trait AppExt {
 	/// Sends an action from the specified target to the world.
-	fn send_action<A: Event>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId;
+	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId;
 	/// Observes all events of the specified type.
 	fn observe_events<E: Event + Clone>(&mut self) -> Vec<E>;
 	/// Observes all par events of the specified type.
@@ -43,7 +43,7 @@ pub trait AppExt {
 }
 
 impl AppExt for bevy::app::App {
-	fn send_action<A: Event>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId {
+	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId {
 		let corrid = wire::CorrelationId::new_v4();
 		self.world
 			.send_event(crate::event_wrapper::Event::new(wire::Req::<A>::new(target.into(), action, corrid)));
