@@ -12,9 +12,9 @@ use bevy::{
 use crate::par_events::{ParEvents, ParManualEventReader};
 
 /// A helper trait for enforcing bounds on assert helpers.
-pub trait AssertHelper: bevy::prelude::Event + Clone + Debug + PartialEq {}
+pub trait AssertHelper: Send + Sync + Clone + Debug + PartialEq + 'static {}
 
-impl<T: bevy::prelude::Event + Clone + Debug + PartialEq> AssertHelper for T {}
+impl<T: Send + Sync + Clone + Debug + PartialEq + 'static> AssertHelper for T {}
 
 /// Extends the `App` trait with additional utility methods.
 pub trait AppExt {
@@ -45,7 +45,8 @@ pub trait AppExt {
 impl AppExt for bevy::app::App {
 	fn send_action<A: Event>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId {
 		let corrid = wire::CorrelationId::new_v4();
-		self.world.send_event(crate::event_wrapper::Event::new(wire::Req::<A>::new(target.into(), action, corrid)));
+		self.world
+			.send_event(crate::event_wrapper::Event::new(wire::Req::<A>::new(target.into(), action, corrid)));
 		corrid
 	}
 
@@ -89,8 +90,16 @@ impl AppExt for bevy::app::App {
 
 	fn assert_ok<Event: AssertHelper, Err: AssertHelper>(&mut self, expected: impl Into<Vec<wire::Res<Event>>>) {
 		let expected: Vec<wire::Res<Event>> = expected.into();
-		let got = self.observe_par_events::<crate::event_wrapper::Event<wire::Res<Event>>>().into_iter().map(|x| x.into_inner()).collect::<Vec<_>>();
-		let errs = self.observe_par_events::<crate::event_wrapper::Event<wire::Error<Err>>>().into_iter().map(|x| x.into_inner()).collect::<Vec<_>>();
+		let got = self
+			.observe_par_events::<crate::event_wrapper::Event<wire::Res<Event>>>()
+			.into_iter()
+			.map(|x| x.into_inner())
+			.collect::<Vec<_>>();
+		let errs = self
+			.observe_par_events::<crate::event_wrapper::Event<wire::Error<Err>>>()
+			.into_iter()
+			.map(|x| x.into_inner())
+			.collect::<Vec<_>>();
 		if !errs.is_empty() {
 			dbg!(&errs);
 			panic!("assertion failed, see above");
@@ -101,8 +110,16 @@ impl AppExt for bevy::app::App {
 
 	fn assert_err<Event: AssertHelper, Err: AssertHelper>(&mut self, expected: impl Into<Vec<wire::Error<Err>>>) {
 		let expected: Vec<wire::Error<Err>> = expected.into();
-		let got = self.observe_par_events::<crate::event_wrapper::Event<wire::Error<Err>>>().into_iter().map(|x| x.into_inner()).collect::<Vec<_>>();
-		let events = self.observe_par_events::<crate::event_wrapper::Event<wire::Res<Event>>>().into_iter().map(|x| x.into_inner()).collect::<Vec<_>>();
+		let got = self
+			.observe_par_events::<crate::event_wrapper::Event<wire::Error<Err>>>()
+			.into_iter()
+			.map(|x| x.into_inner())
+			.collect::<Vec<_>>();
+		let events = self
+			.observe_par_events::<crate::event_wrapper::Event<wire::Res<Event>>>()
+			.into_iter()
+			.map(|x| x.into_inner())
+			.collect::<Vec<_>>();
 		if !events.is_empty() {
 			dbg!(&events);
 			panic!("assertion failed, see above");
@@ -113,7 +130,11 @@ impl AppExt for bevy::app::App {
 
 	fn assert_no_err<Event: AssertHelper, Err: AssertHelper>(&mut self) {
 		self.observe_par_events::<crate::event_wrapper::Event<wire::Res<Event>>>(); // read events to clear them
-		let errs = self.observe_par_events::<crate::event_wrapper::Event<wire::Error<Err>>>().into_iter().map(|x| x.into_inner()).collect::<Vec<_>>();
+		let errs = self
+			.observe_par_events::<crate::event_wrapper::Event<wire::Error<Err>>>()
+			.into_iter()
+			.map(|x| x.into_inner())
+			.collect::<Vec<_>>();
 		if !errs.is_empty() {
 			dbg!(&errs);
 			panic!("assertion failed, see above");
