@@ -2,6 +2,7 @@
 //!
 //! [`bevy::ecs::event::Event`]: https://docs.rs/bevy/latest/bevy/ecs/event/trait.Event.html
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Event<T: Send + Sync + 'static> {
 	inner: T,
 }
@@ -71,5 +72,41 @@ impl<T: std::hash::Hash + Send + Sync + 'static> std::hash::Hash for Event<T> {
 impl<T: Send + Sync + 'static> std::convert::From<T> for Event<T> {
 	fn from(inner: T) -> Self {
 		Self { inner }
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_if_serializable() {
+		#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+		pub struct Foo {
+			pub a: i32,
+			pub b: String,
+		}
+
+		#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+		#[serde(transparent)]
+		pub struct Parent {
+			pub foo: Foo,
+		}
+
+		let parent = Parent {
+			foo: Foo { a: 42, b: "universe".to_string() },
+		};
+		let s = serde_json::to_string(&parent).unwrap();
+		let d: Parent = serde_json::from_str(&s).unwrap();
+		let correct_json = serde_json::json! {
+			{
+				"a": 42,
+				"b": "universe"
+			}
+		}
+		.to_string();
+
+		assert_eq!(parent, d);
+		assert_eq!(s, correct_json);
 	}
 }
