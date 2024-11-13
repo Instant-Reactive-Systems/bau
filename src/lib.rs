@@ -28,7 +28,8 @@ pub mod auxiliary_index;
 pub mod tick_deferred_commands;
 pub mod ws;
 pub mod event_wrapper;
+pub mod auth;
 
 pub mod prelude {
-	pub use crate::{app_ext::*, auxiliary_index::*, defer_delete::*, event_wrapper::*, logging::*, par_events::*, schedules::*, tick_deferred_commands::*};
+	pub use crate::{app_ext::*, auxiliary_index::*, defer_delete::*, event_wrapper::*, logging::*, par_events::*, schedules::*, tick_deferred_commands::*, auth::*};
 }
