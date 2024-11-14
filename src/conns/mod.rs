@@ -1,21 +1,11 @@
 //! Utility for automatically setting up a protocol-agnostic communication from the outside.
 
 use std::{collections::HashMap, net::SocketAddr};
-use bevy::{ecs::prelude::*, prelude::*, tasks::*};
+use bevy::{ecs::prelude::*, prelude::*};
 use deref_derive::{Deref, DerefMut};
-#[allow(unused_imports)]
-use futures_util::{
-	stream::{SplitSink, SplitStream},
-	FutureExt, SinkExt, StreamExt,
-};
-use axum::extract::ws::{Message as WsMessage, WebSocket};
 use tokio::sync::mpsc::{Receiver, Sender};
 
-#[allow(unused_imports)]
-use crate::{
-	auxiliary_index::AuxIndex,
-	par_events::{ParEventReader, ParEventWriter},
-};
+use crate::{auxiliary_index::AuxIndex, par_events::ParEventReader};
 
 /// Wraps the `[wire::UserId]` into a component.
 #[derive(Component, Debug, Clone, Copy, Deref, DerefMut)]
