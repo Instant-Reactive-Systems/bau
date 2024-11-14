@@ -1,4 +1,4 @@
-//! Wrapper around `[bevy::app::App]` offering additional functionality such as
+//! Wrapper around [`bevy::app::App`] offering additional functionality such as
 //! external shutdown signalling and communication bridging.
 
 use std::time::Duration;
