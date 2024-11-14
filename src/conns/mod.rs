@@ -69,9 +69,9 @@ impl UserSessionsMap {
 /// Registers the connection bridge to the `bevy::app::App`.
 pub fn register_conns_bridge<TReq, TRes, TErr>(app: &mut App, bridge: Bridge<TReq, TRes, TErr>)
 where
-	TReq: Clone + std::fmt::Debug + bevy::ecs::event::Event + serde::de::DeserializeOwned,
-	TRes: Clone + std::fmt::Debug + bevy::ecs::event::Event + serde::Serialize,
-	TErr: Clone + std::fmt::Debug + bevy::ecs::event::Event + serde::Serialize + From<wire::NetworkError>,
+	TReq: Clone + std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
+	TRes: Clone + std::fmt::Debug + serde::Serialize + Send + Sync + 'static,
+	TErr: Clone + std::fmt::Debug + serde::Serialize + Send + Sync + 'static,
 {
 	SessionToEntityMap::new().register(app);
 	UserSessionsMap::new().register(app);
@@ -130,9 +130,9 @@ fn accept_connections<TReq, TRes, TErr>(
 	mut first_conn_writer: EventWriter<crate::event_wrapper::Event<wire::FirstConnected<wire::Undetermined>>>,
 	mut exit: EventWriter<bevy::app::AppExit>,
 ) where
-	TReq: bevy::ecs::event::Event + serde::de::DeserializeOwned,
-	TRes: bevy::ecs::event::Event + serde::Serialize,
-	TErr: bevy::ecs::event::Event + serde::Serialize + From<wire::NetworkError>,
+	TReq: Send + Sync + 'static,
+	TRes: Send + Sync + 'static,
+	TErr: Send + Sync + 'static,
 {
 	let new_conn = match bridge.new_conns.try_recv() {
 		Ok(conn) => conn,
@@ -181,9 +181,9 @@ fn receive_messages<TReq, TRes, TErr>(
 	mut user_sessions_map: ResMut<UserSessionsMap>,
 	mut query: Query<(Entity, &SessionId, &mut UserId, &mut ConnRead<TReq>)>,
 ) where
-	TReq: std::fmt::Debug + bevy::ecs::event::Event + serde::de::DeserializeOwned,
-	TRes: bevy::ecs::event::Event + serde::Serialize,
-	TErr: bevy::ecs::event::Event + serde::Serialize + From<wire::NetworkError>,
+	TReq: std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
+	TRes: Send + Sync + 'static,
+	TErr: Send + Sync + 'static,
 {
 	for (entity, session_id, mut user_id, mut rx) in query.iter_mut() {
 		let span = tracing::trace_span!("receive_messages", user_id = user_id.hyphenated().to_string(), session_id = session_id.to_string());
@@ -248,9 +248,9 @@ fn send_messages<TReq, TRes, TErr>(
 	session_to_entity_map: Res<SessionToEntityMap>,
 	mut query: Query<&mut ConnWrite<TRes, TErr>>,
 ) where
-	TReq: Clone + bevy::ecs::event::Event + serde::de::DeserializeOwned,
-	TRes: Clone + bevy::ecs::event::Event + serde::Serialize,
-	TErr: Clone + bevy::ecs::event::Event + serde::Serialize + From<wire::NetworkError>,
+	TReq: Clone + Send + Sync + 'static,
+	TRes: Clone + serde::Serialize + Send + Sync + 'static,
+	TErr: Clone + serde::Serialize + Send + Sync + 'static,
 {
 	for msg in res_reader.read() {
 		send_message::<TReq, TRes, TErr>(Ok(msg.clone().into_inner()), &user_sessions_map, &session_to_entity_map, &mut query);
@@ -268,9 +268,9 @@ fn send_message<TReq, TRes, TErr>(
 	session_to_entity_map: &Res<SessionToEntityMap>,
 	query: &mut Query<&mut ConnWrite<TRes, TErr>>,
 ) where
-	TReq: Clone + bevy::ecs::event::Event + serde::de::DeserializeOwned,
-	TRes: Clone + bevy::ecs::event::Event + serde::Serialize,
-	TErr: Clone + bevy::ecs::event::Event + serde::Serialize + From<wire::NetworkError>,
+	TReq: Clone + Send + Sync + 'static,
+	TRes: Clone + serde::Serialize + Send + Sync + 'static,
+	TErr: Clone + serde::Serialize + Send + Sync + 'static,
 {
 	let (msg, targets) = match msg {
 		Ok(msg) => {

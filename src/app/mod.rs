@@ -25,9 +25,9 @@ impl App {
 	/// Inserts a bridge between the external system and the engine.
 	pub fn with_bridge<TReq, TRes, TErr>(mut self, bridge: crate::conns::Bridge<TReq, TRes, TErr>) -> Self
 	where
-		TReq: Clone + std::fmt::Debug + bevy::ecs::event::Event + serde::de::DeserializeOwned,
-		TRes: Clone + std::fmt::Debug + bevy::ecs::event::Event + serde::Serialize,
-		TErr: Clone + std::fmt::Debug + bevy::ecs::event::Event + serde::Serialize + From<wire::NetworkError>,
+		TReq: Clone + std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
+		TRes: Clone + std::fmt::Debug + serde::Serialize + Send + Sync + 'static,
+		TErr: Clone + std::fmt::Debug + serde::Serialize + Send + Sync + 'static,
 	{
 		crate::conns::register_conns_bridge(&mut self.app, bridge);
 		self
