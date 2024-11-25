@@ -166,8 +166,10 @@ fn accept_connections<TReq, TRes, TErr>(
 	// track how many sessions the user has active (in order to report status updates about his connection)
 	if let Some(sessions) = user_sessions_map.get_mut(&user_id) {
 		sessions.push(session_id);
+		log::trace!("user now has {} sessions active", sessions.len());
 		conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id, session_id)));
 	} else {
+		log::trace!("user just hopped on");
 		user_sessions_map.insert(user_id, session_id);
 		first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id, session_id)));
 	}
@@ -186,16 +188,16 @@ fn receive_messages<TReq, TRes, TErr>(
 	TErr: Send + Sync + 'static,
 {
 	for (entity, session_id, mut user_id, mut rx) in query.iter_mut() {
-		let span = tracing::trace_span!("receive_messages", user_id = user_id.hyphenated().to_string(), session_id = session_id.to_string());
-		let _guard = span.enter();
 		match rx.try_recv() {
 			Ok(msg) => {
+				let span = tracing::trace_span!("receive_messages", user_id = user_id.hyphenated().to_string(), session_id = session_id.to_string());
+				let _guard = span.enter();
 				let target = wire::Target::new(user_id.0, session_id.0);
 				let corrid = wire::CorrelationId::new_v4();
 
 				match msg {
 					ExternalReq::UserAction(action) => {
-						log::trace!("user requested an action: {action:?}");
+						log::debug!("user requested an action: {action:?}");
 						req_writer.send(crate::event_wrapper::Event::new(wire::Req::new(target, action, corrid)))
 					},
 					ExternalReq::Disconnected => {
@@ -203,38 +205,40 @@ fn receive_messages<TReq, TRes, TErr>(
 							if sessions.len() <= 1 {
 								user_sessions_map.remove(&target.id());
 								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-								log::info!("user disconnected, no more remaining sessions");
+								log::debug!("user disconnected, no more remaining sessions");
 							} else {
 								sessions.retain(|session| session != &session_id.0);
-								log::info!("user disconnected, {} remaining sessions", sessions.len());
+								log::debug!("user disconnected, {} remaining sessions", sessions.len());
 							}
 
 							commands.entity(entity).despawn();
 						}
 					},
 					ExternalReq::Authenticated(new_user_id) => {
-						log::info!("user is now authenticated");
+						log::debug!("user is now authenticated");
 						user_id.0 = new_user_id;
 						user_sessions_map.insert(new_user_id, session_id.0);
 					},
 					ExternalReq::Unauthenticated => {
-						log::info!("user is now unauthenticated");
+						log::debug!("user is now unauthenticated");
 						user_id.0 = wire::ANON_USER_ID;
 						user_sessions_map.remove(&user_id.0);
 					},
 				};
 			},
-			Err(err) => match err {
-				tokio::sync::mpsc::error::TryRecvError::Empty => {},
-				tokio::sync::mpsc::error::TryRecvError::Disconnected => {
-					// do not log anything here because for 100+ users, you can assume how useless
-					// the logs become
+			Err(err) => {
+				match err {
+					tokio::sync::mpsc::error::TryRecvError::Empty => {},
+					tokio::sync::mpsc::error::TryRecvError::Disconnected => {
+						// do not log anything here because for 100+ users, you can assume how useless
+						// the logs become
 
-					// if server is shutdown, despawn everything
-					user_sessions_map.remove(&user_id.0);
-					disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-					commands.entity(entity).despawn();
-				},
+						// if server is shutdown, despawn everything
+						user_sessions_map.remove(&user_id.0);
+						disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
+						commands.entity(entity).despawn();
+					},
+				}
 			},
 		}
 	}
@@ -249,8 +253,8 @@ fn send_messages<TReq, TRes, TErr>(
 	mut query: Query<&mut ConnWrite<TRes, TErr>>,
 ) where
 	TReq: Clone + Send + Sync + 'static,
-	TRes: Clone + serde::Serialize + Send + Sync + 'static,
-	TErr: Clone + serde::Serialize + Send + Sync + 'static,
+	TRes: std::fmt::Debug + Clone + serde::Serialize + Send + Sync + 'static,
+	TErr: std::fmt::Debug + Clone + serde::Serialize + Send + Sync + 'static,
 {
 	for msg in res_reader.read() {
 		send_message::<TReq, TRes, TErr>(Ok(msg.clone().into_inner()), &user_sessions_map, &session_to_entity_map, &mut query);
@@ -269,8 +273,8 @@ fn send_message<TReq, TRes, TErr>(
 	query: &mut Query<&mut ConnWrite<TRes, TErr>>,
 ) where
 	TReq: Clone + Send + Sync + 'static,
-	TRes: Clone + serde::Serialize + Send + Sync + 'static,
-	TErr: Clone + serde::Serialize + Send + Sync + 'static,
+	TRes: std::fmt::Debug + Clone + serde::Serialize + Send + Sync + 'static,
+	TErr: std::fmt::Debug + Clone + serde::Serialize + Send + Sync + 'static,
 {
 	let (msg, targets) = match msg {
 		Ok(msg) => {
@@ -282,6 +286,9 @@ fn send_message<TReq, TRes, TErr>(
 			(Err(error), to.into())
 		},
 	};
+	let span = tracing::trace_span!("send_message", targets = format!("{targets:?}"));
+	let _guard = span.enter();
+	log::debug!("sending a response: {msg:?}");
 
 	match &targets {
 		wire::Targets::All => {
