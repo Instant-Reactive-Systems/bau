@@ -84,7 +84,7 @@ impl UserSessionsMap {
 				sessions.retain(|session| session != &session_id);
 			}
 
-			len
+			len - 1
 		} else {
 			0
 		};
