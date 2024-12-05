@@ -225,7 +225,7 @@ fn receive_messages<TReq, TRes, TErr>(
 				match msg {
 					ExternalReq::UserAction(action) => {
 						log::debug!("user requested an action: {action:?}");
-						req_writer.send(crate::event_wrapper::Event::new(wire::Req::new(target, action, corrid)))
+						req_writer.send(crate::event_wrapper::Event::new(wire::Req::new(target, action, corrid)));
 					},
 					ExternalReq::Disconnected => {
 						let remaining = user_sessions_map.remove(user_id.0, session_id.0);

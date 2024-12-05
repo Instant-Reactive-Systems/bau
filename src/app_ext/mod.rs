@@ -37,7 +37,7 @@ pub trait AppExt {
 	/// Updates a tick and asserts that the tick returns no [`wire::Error`].
 	fn update_no_err<Event: AssertHelper, Err: AssertHelper>(&mut self);
 	/// Inspects the queried state of the world.
-	fn inspect_state<Q: WorldQuery>(&mut self, f: impl FnMut(<<Q as WorldQuery>::ReadOnly as WorldQuery>::Item<'_>));
+	fn inspect_state<D: bevy::ecs::query::QueryData>(&mut self, f: impl FnMut(<<D as bevy::ecs::query::QueryData>::ReadOnly as WorldQuery>::Item<'_>));
 	/// Inspects the resource of the world.
 	fn inspect_res<R: Resource>(&mut self, f: impl FnMut(&R));
 }
@@ -146,8 +146,8 @@ impl AppExt for bevy::app::App {
 		self.assert_no_err::<Event, Err>();
 	}
 
-	fn inspect_state<Q: WorldQuery>(&mut self, f: impl FnMut(<<Q as WorldQuery>::ReadOnly as WorldQuery>::Item<'_>)) {
-		self.world.query::<Q>().iter(&self.world).for_each(f);
+	fn inspect_state<D: bevy::ecs::query::QueryData>(&mut self, f: impl FnMut(<<D as bevy::ecs::query::QueryData>::ReadOnly as WorldQuery>::Item<'_>)) {
+		self.world.query::<D>().iter(&self.world).for_each(f);
 	}
 
 	fn inspect_res<R: Resource>(&mut self, mut f: impl FnMut(&R)) {
