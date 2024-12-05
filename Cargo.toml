@@ -7,7 +7,7 @@ version = "0.1.0"
 
 [dependencies]
 wire = { git =  "ssh://git@github.com/Instant-Reactive-Systems/wire.git" }
-bevy = { version = "0.13", default-features = false, features = ["multi-threaded"] }
+bevy = { version = "0.14", default-features = false, features = ["multi_threaded"] }
 log = "0.4"
 bimap = "0.6"
 deref-derive = "0.1"

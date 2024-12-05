@@ -56,8 +56,8 @@ impl<E: Event> std::hash::Hash for ParEventsPlugin<E> {
 
 impl<E: Event> Plugin for ParEventsPlugin<E> {
 	fn build(&self, app: &mut App) {
-		if app.world.contains_resource::<ParEvents<E>>() {
-			return
+		if app.world().contains_resource::<ParEvents<E>>() {
+			return;
 		}
 
 		app.init_resource::<ParEvents<E>>();

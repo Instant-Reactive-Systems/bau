@@ -7,8 +7,8 @@
 use bevy::{
 	ecs::{
 		component::Tick,
-		system::{CommandQueue, ReadOnlySystemParam, SystemMeta, SystemParam},
-		world::unsafe_world_cell::UnsafeWorldCell,
+		system::{ReadOnlySystemParam, SystemMeta, SystemParam},
+		world::{CommandQueue, unsafe_world_cell::UnsafeWorldCell},
 	},
 	prelude::*,
 };
@@ -26,8 +26,8 @@ pub struct TickDeferredCommandStorage(Vec<CommandQueue>);
 impl TickDeferredCommandStorage {
 	/// Registers the resource and systems for tick-deferred commands.
 	pub fn register(self, app: &mut App) {
-		if app.world.contains_resource::<TickDeferredCommandStorage>() {
-			return
+		if app.world().contains_resource::<TickDeferredCommandStorage>() {
+			return;
 		}
 		app.insert_resource(self);
 		app.add_systems(bevy::app::Last, (apply_deferred, apply_tick_deferred_commands));

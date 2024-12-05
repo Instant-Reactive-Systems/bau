@@ -13,6 +13,9 @@ impl<T: Send + Sync + 'static> Event<T> {
 	}
 }
 
+impl<T: Send + Sync + 'static> bevy::ecs::component::Component for Event<T> {
+	const STORAGE_TYPE: bevy::ecs::component::StorageType = bevy::ecs::component::StorageType::Table;
+}
 impl<T: Send + Sync + 'static> bevy::ecs::event::Event for Event<T> {}
 
 impl<T: Send + Sync + 'static> Event<T> {

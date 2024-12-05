@@ -53,11 +53,6 @@ impl App {
 		self.app.run();
 		self
 	}
-
-	/// Runs the app in a dedicated thread.
-	pub fn run_in_thread(self) -> std::thread::JoinHandle<Self> {
-		std::thread::spawn(move || self.run())
-	}
 }
 
 impl Default for App {
@@ -75,13 +70,13 @@ fn process_exit_message(mut rx: ResMut<ShutdownReceiver>, mut exit: EventWriter<
 	match rx.0.try_recv() {
 		Ok(..) => {
 			log::info!("shutting down engine gracefully");
-			exit.send(bevy::app::AppExit);
+			exit.send(bevy::app::AppExit::Success);
 		},
 		Err(err) => match err {
 			oneshot::error::TryRecvError::Empty => return,
 			oneshot::error::TryRecvError::Closed => {
 				log::info!("shutting down engine abruptly");
-				exit.send(bevy::app::AppExit);
+				exit.send(bevy::app::AppExit::error());
 			},
 		},
 	}

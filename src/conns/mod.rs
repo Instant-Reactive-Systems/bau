@@ -167,7 +167,7 @@ fn accept_connections<TReq, TRes, TErr>(
 			tokio::sync::mpsc::error::TryRecvError::Empty => return, // no new connections
 			tokio::sync::mpsc::error::TryRecvError::Disconnected => {
 				log::error!("bridge channel closed, shutting down");
-				exit.send(bevy::app::AppExit);
+				exit.send(bevy::app::AppExit::Success);
 				return;
 			},
 		},

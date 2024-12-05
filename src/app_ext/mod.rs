@@ -45,18 +45,18 @@ pub trait AppExt {
 impl AppExt for bevy::app::App {
 	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId {
 		let corrid = wire::CorrelationId::new_v4();
-		self.world
+		self.world_mut()
 			.send_event(crate::event_wrapper::Event::new(wire::Req::<A>::new(target.into(), action, corrid)));
 		corrid
 	}
 
 	fn observe_events<E: Event + Clone>(&mut self) -> Vec<E> {
-		self.world.init_resource::<Observer<E>>();
+		self.world_mut().init_resource::<Observer<E>>();
 
-		let events_res = self.world.resource::<Events<E>>();
+		let events_res = self.world().resource::<Events<E>>();
 		// SAFETY: Used only in testing purposes where systems are controlled via manual ticks.
 		let mut observer = unsafe {
-			self.world
+			self.world()
 				.as_unsafe_world_cell_readonly()
 				.get_resource_mut::<Observer<E>>()
 				.expect("Observer resource not initialized")
@@ -65,12 +65,12 @@ impl AppExt for bevy::app::App {
 	}
 
 	fn observe_par_events<E: Event + Clone>(&mut self) -> Vec<E> {
-		self.world.init_resource::<ParObserver<E>>();
+		self.world_mut().init_resource::<ParObserver<E>>();
 
-		let events_res = self.world.resource::<ParEvents<E>>();
+		let events_res = self.world().resource::<ParEvents<E>>();
 		// SAFETY: Used only in testing purposes where systems are controlled via manual ticks.
 		let mut observer = unsafe {
-			self.world
+			self.world()
 				.as_unsafe_world_cell_readonly()
 				.get_resource_mut::<ParObserver<E>>()
 				.expect("Observer resource not initialized")
@@ -80,7 +80,7 @@ impl AppExt for bevy::app::App {
 
 	fn add_schedule_after(&mut self, schedule: impl ScheduleLabel + Clone, after: impl ScheduleLabel) {
 		self.init_schedule(schedule.clone());
-		let mut main_schedule = self.world.resource_mut::<bevy::app::MainScheduleOrder>();
+		let mut main_schedule = self.world_mut().resource_mut::<bevy::app::MainScheduleOrder>();
 		main_schedule.insert_after(after, schedule);
 	}
 
@@ -147,11 +147,11 @@ impl AppExt for bevy::app::App {
 	}
 
 	fn inspect_state<D: bevy::ecs::query::QueryData>(&mut self, f: impl FnMut(<<D as bevy::ecs::query::QueryData>::ReadOnly as WorldQuery>::Item<'_>)) {
-		self.world.query::<D>().iter(&self.world).for_each(f);
+		self.world_mut().query::<D>().iter(self.world()).for_each(f);
 	}
 
 	fn inspect_res<R: Resource>(&mut self, mut f: impl FnMut(&R)) {
-		f(self.world.get_resource::<R>().expect("resource not found"));
+		f(self.world().get_resource::<R>().expect("resource not found"));
 	}
 }
 
