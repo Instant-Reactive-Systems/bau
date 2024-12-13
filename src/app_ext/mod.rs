@@ -5,7 +5,7 @@
 use std::{cmp::PartialEq, fmt::Debug};
 
 use bevy::{
-	ecs::{event::ManualEventReader, prelude::*, query::WorldQuery, schedule::ScheduleLabel},
+	ecs::{prelude::*, query::WorldQuery, schedule::ScheduleLabel},
 	prelude::{Deref, DerefMut},
 };
 
@@ -51,17 +51,8 @@ impl AppExt for bevy::app::App {
 	}
 
 	fn observe_events<E: Event + Clone>(&mut self) -> Vec<E> {
-		self.world_mut().init_resource::<Observer<E>>();
-
 		let events_res = self.world().resource::<Events<E>>();
-		// SAFETY: Used only in testing purposes where systems are controlled via manual ticks.
-		let mut observer = unsafe {
-			self.world()
-				.as_unsafe_world_cell_readonly()
-				.get_resource_mut::<Observer<E>>()
-				.expect("Observer resource not initialized")
-		};
-		observer.read(&events_res).cloned().collect()
+		events_res.get_cursor().read(&events_res).cloned().collect()
 	}
 
 	fn observe_par_events<E: Event + Clone>(&mut self) -> Vec<E> {
@@ -152,21 +143,6 @@ impl AppExt for bevy::app::App {
 
 	fn inspect_res<R: Resource>(&mut self, mut f: impl FnMut(&R)) {
 		f(self.world().get_resource::<R>().expect("resource not found"));
-	}
-}
-
-/// A wrapper type for [`ManualEventReader`] that implements [`Resource`]
-/// used for observing an [`Event`].
-///
-/// [`ManualEventReader`]: https://docs.rs/bevy/latest/bevy/ecs/event/struct.ManualEventReader.html
-/// [`Resource`]: https://docs.rs/bevy/latest/bevy/ecs/prelude/trait.Resource.html
-/// [`Event`]: https://docs.rs/bevy/latest/bevy/ecs/event/trait.Event.html
-#[derive(Resource, Debug, Deref, DerefMut)]
-struct Observer<E: Event>(ManualEventReader<E>);
-
-impl<E: Event> Default for Observer<E> {
-	fn default() -> Self {
-		Self(ManualEventReader::default())
 	}
 }
 

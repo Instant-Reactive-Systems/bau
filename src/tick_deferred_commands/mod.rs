@@ -43,14 +43,14 @@ fn apply_tick_deferred_commands(world: &mut World) {
 	});
 }
 
-/// A system parameter that provides concurrent access to the [`TickDeferredCommandQueue`].
+/// A system parameter that provides concurrent access to the [`TickDeferredCommandStorage`].
 ///
 /// # Example
 /// ```
 /// # use bevy::prelude::*;
 /// # use bau::prelude::*;
 /// fn example_system(mut commands: TickDeferredCommands) {
-/// 	commands.add(|_world: &mut World| {
+/// 	commands.queue(|_world: &mut World| {
 /// 		println!("Hello!");
 /// 	});
 /// }
@@ -58,6 +58,12 @@ fn apply_tick_deferred_commands(world: &mut World) {
 #[derive(Deref, DerefMut)]
 pub struct TickDeferredCommands<'w, 's> {
 	commands: Commands<'w, 's>,
+}
+
+impl<'w, 's> TickDeferredCommands<'w, 's> {
+	pub fn queue<C: Command>(&mut self, command: C) {
+		self.commands.queue(command);
+	}
 }
 
 // SAFETY: Only local state is accessed.

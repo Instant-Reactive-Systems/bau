@@ -16,7 +16,9 @@ impl<T: Send + Sync + 'static> Event<T> {
 impl<T: Send + Sync + 'static> bevy::ecs::component::Component for Event<T> {
 	const STORAGE_TYPE: bevy::ecs::component::StorageType = bevy::ecs::component::StorageType::Table;
 }
-impl<T: Send + Sync + 'static> bevy::ecs::event::Event for Event<T> {}
+impl<T: Send + Sync + 'static> bevy::ecs::event::Event for Event<T> {
+	type Traversal = ();
+}
 
 impl<T: Send + Sync + 'static> Event<T> {
 	pub fn into_inner(self) -> T {
