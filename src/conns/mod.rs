@@ -246,9 +246,7 @@ fn receive_messages<TReq, TRes, TErr>(
 
 						// insert the session as an authenticated user
 						user_id.0 = new_user_id;
-						user_sessions_map.insert(new_user_id, session_id.0);
-
-						if let Some(sessions) = user_sessions_map.get_mut(&user_id) {
+						if let Some(sessions) = user_sessions_map.get_mut(&user_id.0) {
 							sessions.push(session_id.0);
 							log::trace!("user now has {} sessions active", sessions.len());
 							conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id.0, session_id.0)));
