@@ -207,6 +207,8 @@ fn receive_messages<TReq, TRes, TErr>(
 	mut commands: Commands,
 	mut req_writer: EventWriter<crate::event_wrapper::Event<wire::Req<TReq>>>,
 	mut disconn_writer: EventWriter<crate::event_wrapper::Event<wire::Disconnected<wire::Undetermined>>>,
+	mut conn_writer: EventWriter<crate::event_wrapper::Event<wire::Connected<wire::Undetermined>>>,
+	mut first_conn_writer: EventWriter<crate::event_wrapper::Event<wire::FirstConnected<wire::Undetermined>>>,
 	mut user_sessions_map: ResMut<UserSessionsMap>,
 	mut query: Query<(Entity, &SessionId, &mut UserId, &mut ConnRead<TReq>)>,
 ) where
@@ -245,6 +247,17 @@ fn receive_messages<TReq, TRes, TErr>(
 						// insert the session as an authenticated user
 						user_id.0 = new_user_id;
 						user_sessions_map.insert(new_user_id, session_id.0);
+
+						if let Some(sessions) = user_sessions_map.get_mut(&user_id) {
+							sessions.push(session_id.0);
+							log::trace!("user now has {} sessions active", sessions.len());
+							conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id.0, session_id.0)));
+						} else {
+							log::trace!("user just hopped on");
+							user_sessions_map.insert(user_id.0, session_id.0);
+							first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id.0, session_id.0)));
+						}
+
 						log::debug!("user is now authenticated, {remaining} anonymous sessions left");
 					},
 					ExternalReq::Unauthenticated => {
