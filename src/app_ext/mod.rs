@@ -4,19 +4,13 @@
 
 use std::{cmp::PartialEq, fmt::Debug};
 
-use bevy::{
-	ecs::{
-		prelude::*,
-		query::{WorldQuery, QueryData, QueryFilter},
-		schedule::ScheduleLabel,
-	},
-	prelude::{Deref, DerefMut},
+use bevy::ecs::{
+	prelude::*,
+	query::{QueryData, QueryFilter},
+	schedule::ScheduleLabel,
 };
 
-use crate::{
-	par_events::{ParEvents, ParManualEventReader},
-	event_wrapper::Event,
-};
+use crate::{par_events::ParEvents, event_wrapper::Event};
 
 /// A helper trait for enforcing bounds on assert helpers.
 pub trait AssertHelper: Send + Sync + Clone + Debug + PartialEq + 'static {}
@@ -27,8 +21,10 @@ impl<T: Send + Sync + Clone + Debug + PartialEq + 'static> AssertHelper for T {}
 pub trait AppExt {
 	/// Adds a custom schedule after the specified schedule.
 	fn add_schedule_after(&mut self, schedule: impl ScheduleLabel + Clone, after: impl ScheduleLabel);
+
 	/// Adds systems to a set to the app.
 	fn add_systems_to_set<M>(&mut self, set: impl SystemSet, systems: impl IntoSystemConfigs<M>);
+
 	/// Returns all events that were queued in the last two ticks.
 	fn events<E: Send + Sync + Clone + 'static>(&self) -> Vec<E>;
 
@@ -46,9 +42,22 @@ pub trait AppExt {
 
 	/// Sends an action from the specified target to the world.
 	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId;
+
+	/// Sends an event to the world.
+	fn send_event<E: Send + Sync + 'static>(&mut self, event: E);
 }
 
 impl AppExt for bevy::app::App {
+	fn add_schedule_after(&mut self, schedule: impl ScheduleLabel + Clone, after: impl ScheduleLabel) {
+		self.init_schedule(schedule.clone());
+		let mut main_schedule = self.world_mut().resource_mut::<bevy::app::MainScheduleOrder>();
+		main_schedule.insert_after(after, schedule);
+	}
+
+	fn add_systems_to_set<M>(&mut self, set: impl SystemSet, systems: impl IntoSystemConfigs<M>) {
+		self.add_systems(bevy::app::Update, systems.in_set(set));
+	}
+
 	fn events<E: Send + Sync + Clone + 'static>(&self) -> Vec<E> {
 		let events = self.world().resource::<Events<Event<E>>>();
 		let mut cursor = events.get_cursor();
@@ -86,13 +95,8 @@ impl AppExt for bevy::app::App {
 			.send_event(crate::event_wrapper::Event::new(wire::Req::<A>::new(target.into(), action, corrid)));
 		corrid
 	}
-	fn add_schedule_after(&mut self, schedule: impl ScheduleLabel + Clone, after: impl ScheduleLabel) {
-		self.init_schedule(schedule.clone());
-		let mut main_schedule = self.world_mut().resource_mut::<bevy::app::MainScheduleOrder>();
-		main_schedule.insert_after(after, schedule);
-	}
 
-	fn add_systems_to_set<M>(&mut self, set: impl SystemSet, systems: impl IntoSystemConfigs<M>) {
-		self.add_systems(bevy::app::Update, systems.in_set(set));
+	fn send_event<E: Send + Sync + 'static>(&mut self, event: E) {
+		self.world_mut().send_event(Event::new(event));
 	}
 }
