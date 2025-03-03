@@ -18,8 +18,6 @@ impl<T: Send + Sync + Clone + Debug + PartialEq + 'static> AssertHelper for T {}
 
 /// Extends the `App` trait with additional utility methods.
 pub trait AppExt {
-	/// Sends an action from the specified target to the world.
-	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId;
 	/// Observes all events of the specified type.
 	fn observe_events<E: Event + Clone>(&mut self) -> Vec<E>;
 	/// Observes all par events of the specified type.
@@ -40,9 +38,47 @@ pub trait AppExt {
 	fn inspect_state<D: bevy::ecs::query::QueryData>(&mut self, f: impl FnMut(<<D as bevy::ecs::query::QueryData>::ReadOnly as WorldQuery>::Item<'_>));
 	/// Inspects the resource of the world.
 	fn inspect_res<R: Resource>(&mut self, f: impl FnMut(&R));
+
+	/// Returns all events that were queued in the last two ticks.
+	fn events<E: Event + Clone>(&self) -> Vec<E>;
+
+	/// Returns all events that were queued in the last two ticks.
+	fn par_events<E: Event + Clone>(&self) -> Vec<E>;
+
+	/// Returns the specified resource.
+	fn res<R: Resource + Clone>(&self) -> R;
+
+	/// Returns the specified component.
+	fn component<C: Component + Clone>(&self) -> C;
+
+	/// Sends an action from the specified target to the world.
+	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId;
 }
 
 impl AppExt for bevy::app::App {
+	fn events<E: Event + Clone>(&self) -> Vec<E> {
+		let events = self.world().resource::<Events<E>>();
+		let mut cursor = events.get_cursor();
+		cursor.read(&events).cloned().collect()
+	}
+
+	fn par_events<E: Event + Clone>(&self) -> Vec<E> {
+		let events = self.world().resource::<ParEvents<E>>();
+		let mut reader = events.get_reader();
+		reader.read(&events).cloned().collect()
+	}
+
+	fn res<R: Resource + Clone>(&self) -> R {
+		self.world().resource::<R>().clone()
+	}
+
+	fn component<C: Component + Clone>(&self) -> C {
+		// SAFETY: Holds the world mutably for a short while, then clones the specified component.
+		let world = unsafe { self.world().as_unsafe_world_cell_readonly().world_mut() };
+		let mut query = world.query::<&C>();
+		query.single(&world).clone()
+	}
+
 	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId {
 		let corrid = wire::CorrelationId::new_v4();
 		self.world_mut()

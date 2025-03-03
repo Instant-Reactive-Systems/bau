@@ -141,9 +141,9 @@ struct ParEventInstance<E: Event> {
 /// [`Events`]: https://docs.rs/bevy/latest/bevy/ecs/struct.Events.html
 #[derive(Resource, Debug)]
 pub struct ParEvents<E: Event> {
-	events_a: SafeUnsafeCell<Vec<UnsafeCell<Vec<ParEventInstance<E>>>>>,
-	events_b: SafeUnsafeCell<Vec<UnsafeCell<Vec<ParEventInstance<E>>>>>,
-	event_count: AtomicUsize,
+	pub(crate) events_a: SafeUnsafeCell<Vec<UnsafeCell<Vec<ParEventInstance<E>>>>>,
+	pub(crate) events_b: SafeUnsafeCell<Vec<UnsafeCell<Vec<ParEventInstance<E>>>>>,
+	pub(crate) event_count: AtomicUsize,
 }
 
 impl<E: Event> Default for ParEvents<E> {
