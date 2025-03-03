@@ -5,7 +5,11 @@
 use std::{cmp::PartialEq, fmt::Debug};
 
 use bevy::{
-	ecs::{prelude::*, query::WorldQuery, schedule::ScheduleLabel},
+	ecs::{
+		prelude::*,
+		query::{WorldQuery, QueryData, QueryFilter},
+		schedule::ScheduleLabel,
+	},
 	prelude::{Deref, DerefMut},
 };
 
@@ -51,6 +55,9 @@ pub trait AppExt {
 	/// Returns the specified component.
 	fn component<C: Component + Clone>(&self) -> C;
 
+	/// Checks if the query matches.
+	fn query_matches<Q: QueryData, F: QueryFilter>(&self) -> bool;
+
 	/// Sends an action from the specified target to the world.
 	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId;
 }
@@ -77,6 +84,14 @@ impl AppExt for bevy::app::App {
 		let world = unsafe { self.world().as_unsafe_world_cell_readonly().world_mut() };
 		let mut query = world.query::<&C>();
 		query.single(&world).clone()
+	}
+
+	fn query_matches<Q: QueryData, F: QueryFilter>(&self) -> bool {
+		// SAFETY: Holds the world mutably for a short while, then clones the specified component.
+		let world = unsafe { self.world().as_unsafe_world_cell_readonly().world_mut() };
+		let mut query = world.query_filtered::<Q, F>();
+		let query_item = query.get_single(&world);
+		query_item.is_ok()
 	}
 
 	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId {
