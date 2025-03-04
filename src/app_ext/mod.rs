@@ -2,8 +2,6 @@
 //!
 //! [`bevy::app::App`]: https://docs.rs/bevy/latest/bevy/app/struct.App.html
 
-use std::{cmp::PartialEq, fmt::Debug};
-
 use bevy::ecs::{
 	prelude::*,
 	query::{QueryData, QueryFilter},
@@ -11,11 +9,6 @@ use bevy::ecs::{
 };
 
 use crate::{par_events::ParEvents, event_wrapper::Event};
-
-/// A helper trait for enforcing bounds on assert helpers.
-pub trait AssertHelper: Send + Sync + Clone + Debug + PartialEq + 'static {}
-
-impl<T: Send + Sync + Clone + Debug + PartialEq + 'static> AssertHelper for T {}
 
 /// Extends the `App` trait with additional utility methods.
 pub trait AppExt {

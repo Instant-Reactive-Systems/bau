@@ -122,7 +122,7 @@ impl<E: Event> std::fmt::Debug for ParEventId<E> {
 
 /// An ID and an event pair.
 #[derive(Debug)]
-struct ParEventInstance<E: Event> {
+pub(crate) struct ParEventInstance<E: Event> {
 	pub event_id: ParEventId<E>,
 	pub event: E,
 }
