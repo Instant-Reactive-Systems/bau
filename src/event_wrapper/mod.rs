@@ -82,8 +82,6 @@ impl<T: Send + Sync + 'static> std::convert::From<T> for Event<T> {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-
 	#[test]
 	fn test_if_serializable() {
 		#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]

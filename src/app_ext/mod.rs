@@ -13,33 +13,43 @@ use crate::{par_events::ParEvents, event_wrapper::Event};
 /// Extends the `App` trait with additional utility methods.
 pub trait AppExt {
 	/// Adds a custom schedule after the specified schedule.
+	#[track_caller]
 	fn add_schedule_after(&mut self, schedule: impl ScheduleLabel + Clone, after: impl ScheduleLabel);
 
 	/// Adds systems to a set to the app.
+	#[track_caller]
 	fn add_systems_to_set<M>(&mut self, set: impl SystemSet, systems: impl IntoSystemConfigs<M>);
 
 	/// Returns all events that were queued in the last two ticks.
+	#[track_caller]
 	fn events<E: Send + Sync + Clone + 'static>(&self) -> Vec<E>;
 
 	/// Returns all events that were queued in the last two ticks.
+	#[track_caller]
 	fn par_events<E: Send + Sync + Clone + 'static>(&self) -> Vec<E>;
 
 	/// Returns the specified resource.
+	#[track_caller]
 	fn res<R: Resource + Clone>(&self) -> R;
 
 	/// Returns the specified component.
+	#[track_caller]
 	fn component<C: Component + Clone>(&self) -> C;
 
 	/// Checks if the query matches.
+	#[track_caller]
 	fn query_matches<Q: QueryData, F: QueryFilter>(&self) -> bool;
 
 	/// Sends an action from the specified target to the world.
+	#[track_caller]
 	fn send_action<A: Send + Sync + 'static>(&mut self, target: impl Into<wire::Target>, action: A) -> wire::CorrelationId;
 
 	/// Sends an event to the world.
+	#[track_caller]
 	fn send_event<E: Send + Sync + 'static>(&mut self, event: E);
 
 	/// Runs an update twice to remove the events from the old buffer.
+	#[track_caller]
 	fn tick(&mut self);
 }
 
