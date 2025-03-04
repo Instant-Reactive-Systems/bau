@@ -36,6 +36,10 @@ pub trait AppExt {
 	#[track_caller]
 	fn component<C: Component + Clone>(&self) -> C;
 
+	/// Returns more than one of the specified component.
+	#[track_caller]
+	fn components<C: Component + Clone>(&self) -> Vec<C>;
+
 	/// Checks if the query matches.
 	#[track_caller]
 	fn query_matches<Q: QueryData, F: QueryFilter>(&self) -> bool;
@@ -85,6 +89,13 @@ impl AppExt for bevy::app::App {
 		let world = unsafe { self.world().as_unsafe_world_cell_readonly().world_mut() };
 		let mut query = world.query::<&C>();
 		query.single(&world).clone()
+	}
+
+	fn components<C: Component + Clone>(&self) -> Vec<C> {
+		// SAFETY: Holds the world mutably for a short while, then clones the specified component.
+		let world = unsafe { self.world().as_unsafe_world_cell_readonly().world_mut() };
+		let mut query = world.query::<&C>();
+		query.iter(&world).cloned().collect()
 	}
 
 	fn query_matches<Q: QueryData, F: QueryFilter>(&self) -> bool {
