@@ -45,6 +45,9 @@ pub trait AppExt {
 
 	/// Sends an event to the world.
 	fn send_event<E: Send + Sync + 'static>(&mut self, event: E);
+
+	/// Runs an update twice to remove the events from the old buffer.
+	fn tick(&mut self);
 }
 
 impl AppExt for bevy::app::App {
@@ -98,5 +101,10 @@ impl AppExt for bevy::app::App {
 
 	fn send_event<E: Send + Sync + 'static>(&mut self, event: E) {
 		self.world_mut().send_event(Event::new(event));
+	}
+
+	fn tick(&mut self) {
+		self.update();
+		self.update();
 	}
 }
