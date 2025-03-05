@@ -130,7 +130,7 @@ pub struct Conn<TReq, TRes, TErr> {
 	/// The user's socket address.
 	pub user_socket_address: SocketAddr,
 	/// The channel that communicates to the outside.
-	pub channel: DuplexChannel<Result<TRes, TErr>, ExternalReq<TReq>>,
+	pub channel: DuplexChannel<Result<wire::TimestampedEvent<TRes>, TErr>, ExternalReq<TReq>>,
 }
 
 /// A bridge between the `bevy` and the external system.
@@ -146,7 +146,7 @@ pub struct ConnRead<TReq>(pub Receiver<ExternalReq<TReq>>);
 
 /// Represents the write end of the connection.
 #[derive(Component, Debug, Deref, DerefMut)]
-pub struct ConnWrite<TRes, TErr>(pub Sender<Result<TRes, TErr>>);
+pub struct ConnWrite<TRes, TErr>(pub Sender<Result<wire::TimestampedEvent<TRes>, TErr>>);
 
 /// Accepts user connections from the external system.
 fn accept_connections<TReq, TRes, TErr>(
