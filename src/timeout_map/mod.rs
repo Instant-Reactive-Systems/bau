@@ -78,19 +78,19 @@ where
 	}
 
 	/// Inserts a new target timeout to the map.
-	pub fn insert(&mut self, target: &wire::Target, duration: Duration) {
+	pub fn insert(&mut self, target: wire::Target, duration: Duration) {
 		let now = Instant::now();
-		let target = Self::transform_target(target);
+		let target = Self::transform_target(&target);
 		let n_in_queue = self.queues.entry(duration).or_default().len();
 		self.timeouts.insert(target, (duration, now, n_in_queue));
 		self.queues.get_mut(&duration).unwrap().push(target);
 	}
 
 	/// Inserts new target timeouts to the map.
-	pub fn insert_many(&mut self, targets: &[wire::Target], duration: Duration) {
+	pub fn insert_many(&mut self, targets: impl IntoIterator<Item = wire::Target>, duration: Duration) {
 		let now = Instant::now();
 		for target in targets {
-			let target = Self::transform_target(target);
+			let target = Self::transform_target(&target);
 			let n_in_queue = self.queues.entry(duration).or_default().len();
 			self.timeouts.insert(target, (duration, now, n_in_queue));
 			self.queues.get_mut(&duration).unwrap().push(target);
@@ -111,10 +111,10 @@ where
 	}
 
 	/// Removes targets from the map.
-	pub fn remove_many(&mut self, targets: &[wire::Target]) {
+	pub fn remove_many(&mut self, targets: impl IntoIterator<Item = wire::Target>) {
 		// TODO: is there a more efficient way of bulk deletion in this context?
 		for target in targets {
-			self.remove(target);
+			self.remove(&target);
 		}
 	}
 
