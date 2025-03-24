@@ -30,7 +30,12 @@ pub mod tick_deferred_commands;
 pub mod conns;
 pub mod event_wrapper;
 pub mod app;
+pub mod target_map;
+pub mod timeout_map;
 
 pub mod prelude {
-	pub use crate::{app_ext::*, auxiliary_index::*, defer_delete::*, event_wrapper::*, logging::*, par_events::*, schedules::*, tick_deferred_commands::*, conns::*, app::*};
+	pub use crate::{
+		app_ext::*, auxiliary_index::*, defer_delete::*, event_wrapper::*, logging::*, par_events::*, schedules::*, tick_deferred_commands::*, conns::*, app::*, target_map::*,
+		timeout_map::*,
+	};
 }

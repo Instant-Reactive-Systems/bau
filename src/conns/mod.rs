@@ -40,7 +40,7 @@ impl UserSessionsMap {
 		Self::default()
 	}
 
-	/// Registers [`UserSessionsMap`] as a resource.
+	/// Registers itself as a resource.
 	pub fn register(self, app: &mut App) {
 		app.insert_resource(self);
 	}
