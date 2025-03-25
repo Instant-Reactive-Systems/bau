@@ -19,6 +19,12 @@ pub struct TargetLeft<T> {
 	_phantom: std::marker::PhantomData<T>,
 }
 
+impl<T> TargetLeft<T> {
+	pub fn new(target: wire::Target) -> Self {
+		Self { target, _phantom: Default::default() }
+	}
+}
+
 /// Auxiliary index for targets.
 ///
 /// Maps targets to an arbitrary type, used to connect a target to arbitrary data.
