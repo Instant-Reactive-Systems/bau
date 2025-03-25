@@ -12,6 +12,12 @@ pub struct TargetJoined<T> {
 	pub value: T,
 }
 
+impl<T> TargetJoined<T> {
+	pub fn new(target: wire::Target, value: T) -> Self {
+		Self { target, value }
+	}
+}
+
 /// An event used to notify when a target has left the data.
 #[derive(Clone)]
 pub struct TargetLeft<T> {
