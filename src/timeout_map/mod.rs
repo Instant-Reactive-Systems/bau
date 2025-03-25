@@ -135,9 +135,7 @@ where
 	pub fn process_timeouts(mut map: ResMut<Self>, mut expired_timeout_writer: EventWriter<crate::event_wrapper::Event<ExpiredTimeout<M>>>) {
 		let now = Instant::now();
 		let Self { timeouts, queues, _phant: _ } = map.deref_mut();
-		log::info!("in process_timeouts");
-		for (duration, queue) in queues.iter_mut() {
-			log::info!("in queue '{duration:?}': {queue:?}");
+		for queue in queues.values_mut() {
 			// get first non-expired index
 			let idx = queue
 				.iter()
@@ -145,12 +143,9 @@ where
 					// SAFETY: The `queue` and `timeouts` data are synchronized.
 					let (time_limit, instant, _) = timeouts.get(target).unwrap().clone();
 					let current_time_span = now.saturating_duration_since(instant);
-					log::info!("current_time_span: {current_time_span:?}");
-					log::info!("time_limit: {time_limit:?}");
 					current_time_span <= time_limit
 				})
 				.unwrap_or(queue.len());
-			log::info!("first_nonexpired_idx: {idx:?}");
 
 			// update the remaining timeouts
 			let n_expired = idx;
@@ -162,7 +157,6 @@ where
 
 			// remove the timeouts from the lookup table and publish the events
 			for target in queue.drain(..idx) {
-				log::info!("in drain: target: {target:?}");
 				timeouts.remove(&target);
 				expired_timeout_writer.send(crate::event_wrapper::Event::new(ExpiredTimeout { target, _phant: Default::default() }));
 			}
