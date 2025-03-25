@@ -138,31 +138,33 @@ where
 		log::info!("in process_timeouts");
 		for (duration, queue) in queues.iter_mut() {
 			log::info!("in queue '{duration:?}': {queue:?}");
-			let first_nonexpired_idx = queue.iter().position(|target| {
-				// SAFETY: The `queue` and `timeouts` data are synchronized.
-				let (time_limit, instant, _) = timeouts.get(target).unwrap().clone();
-				let current_time_span = now.saturating_duration_since(instant);
-				log::info!("current_time_span: {current_time_span:?}");
-				log::info!("time_limit: {time_limit:?}");
-				current_time_span <= time_limit
-			});
-			log::info!("first_nonexpired_idx: {first_nonexpired_idx:?}");
-
-			if let Some(idx) = first_nonexpired_idx {
-				// update the remaining timeouts
-				let n_expired = idx;
-				for target in &queue[idx..] {
+			// get first non-expired index
+			let idx = queue
+				.iter()
+				.position(|target| {
 					// SAFETY: The `queue` and `timeouts` data are synchronized.
-					let (_, _, idx) = timeouts.get_mut(&target).unwrap();
-					*idx -= n_expired;
-				}
+					let (time_limit, instant, _) = timeouts.get(target).unwrap().clone();
+					let current_time_span = now.saturating_duration_since(instant);
+					log::info!("current_time_span: {current_time_span:?}");
+					log::info!("time_limit: {time_limit:?}");
+					current_time_span <= time_limit
+				})
+				.unwrap_or(queue.len());
+			log::info!("first_nonexpired_idx: {idx:?}");
 
-				// remove the timeouts from the lookup table and publish the events
-				for target in queue.drain(..idx) {
-					log::info!("in drain: target: {target:?}");
-					timeouts.remove(&target);
-					expired_timeout_writer.send(crate::event_wrapper::Event::new(ExpiredTimeout { target, _phant: Default::default() }));
-				}
+			// update the remaining timeouts
+			let n_expired = idx;
+			for target in &queue[idx..] {
+				// SAFETY: The `queue` and `timeouts` data are synchronized.
+				let (_, _, idx) = timeouts.get_mut(&target).unwrap();
+				*idx -= n_expired;
+			}
+
+			// remove the timeouts from the lookup table and publish the events
+			for target in queue.drain(..idx) {
+				log::info!("in drain: target: {target:?}");
+				timeouts.remove(&target);
+				expired_timeout_writer.send(crate::event_wrapper::Event::new(ExpiredTimeout { target, _phant: Default::default() }));
 			}
 		}
 	}
