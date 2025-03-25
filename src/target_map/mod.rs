@@ -114,6 +114,15 @@ where
 	}
 }
 
+impl<T> Clone for TargetMap<T>
+where
+	T: Clone + Send + Sync + 'static,
+{
+	fn clone(&self) -> Self {
+		Self(self.0.clone())
+	}
+}
+
 impl<T> std::fmt::Debug for TargetMap<T>
 where
 	T: std::fmt::Debug + Clone + Send + Sync + 'static,
