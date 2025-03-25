@@ -54,6 +54,8 @@ where
 	/// Registers itself as a resource.
 	pub fn register(self, app: &mut App) {
 		app.insert_resource(self);
+		app.add_event::<crate::event_wrapper::Event<TargetJoined<T>>>();
+		app.add_event::<crate::event_wrapper::Event<TargetLeft<T>>>();
 		app.add_systems(crate::schedules::PostInput, Self::on_target_change);
 	}
 
