@@ -132,8 +132,8 @@ where
 	M: Send + Sync + 'static,
 {
 	/// Checks if which timeouts are expired and sends the appropriate events.
-	pub fn process_timeouts(mut map: ResMut<Self>, mut expired_timeout_writer: EventWriter<crate::event_wrapper::Event<ExpiredTimeout<M>>>, time: Res<Time<Real>>) {
-		let now = time.last_update().unwrap_or(Instant::now());
+	pub fn process_timeouts(mut map: ResMut<Self>, mut expired_timeout_writer: EventWriter<crate::event_wrapper::Event<ExpiredTimeout<M>>>) {
+		let now = Instant::now();
 		let Self { timeouts, queues, _phant: _ } = map.deref_mut();
 		for queue in queues.values_mut() {
 			let first_nonexpired_idx = queue.iter().position(|target| {
