@@ -142,6 +142,8 @@ where
 				// SAFETY: The `queue` and `timeouts` data are synchronized.
 				let (time_limit, instant, _) = timeouts.get(target).unwrap().clone();
 				let current_time_span = now.saturating_duration_since(instant);
+				log::info!("current_time_span: {current_time_span:?}");
+				log::info!("time_limit: {time_limit:?}");
 				current_time_span > time_limit
 			});
 			log::info!("first_nonexpired_idx: {first_nonexpired_idx:?}");
