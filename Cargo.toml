@@ -6,7 +6,7 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wire = { git =  "ssh://git@github.com/Instant-Reactive-Systems/wire.git" }
+wire = { git =  "https://github.com/Instant-Reactive-Systems/wire.git" }
 bevy = { version = "0.15", default-features = false, features = ["multi_threaded"] }
 log = "0.4"
 bimap = "0.6"
