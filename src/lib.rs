@@ -32,10 +32,36 @@ pub mod event_wrapper;
 pub mod app;
 pub mod target_map;
 pub mod timeout_map;
+pub mod bridge;
 
 pub mod prelude {
 	pub use crate::{
 		app_ext::*, auxiliary_index::*, defer_delete::*, event_wrapper::*, logging::*, par_events::*, schedules::*, tick_deferred_commands::*, conns::*, app::*, target_map::*,
-		timeout_map::*,
+		timeout_map::*, bridge::*,
 	};
+}
+
+use tokio::sync::mpsc::{Receiver, Sender};
+
+/// Creates a pair of mpsc channels which can be used for bidirectional communication.
+pub fn duplex_channel<S: Send, R: Send>(buffer: usize) -> (DuplexChannel<S, R>, DuplexChannel<R, S>) {
+	let (tx_1, rx_1) = tokio::sync::mpsc::channel::<S>(buffer);
+	let (tx_2, rx_2) = tokio::sync::mpsc::channel::<R>(buffer);
+
+	(DuplexChannel { tx: tx_1, rx: rx_2 }, DuplexChannel { tx: tx_2, rx: rx_1 })
+}
+
+/// A bi-directional channel to communicate with the external connection system.
+pub struct DuplexChannel<S, R> {
+	/// Used for sending messages to other duplex channel pair.
+	pub tx: Sender<S>,
+	/// Used for receiving messages from other duplex channel pair.
+	pub rx: Receiver<R>,
+}
+
+impl<S, R> std::fmt::Debug for DuplexChannel<S, R> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct(&format!("DuplexChannel<{}, {}>", std::any::type_name::<S>(), std::any::type_name::<R>()))
+			.finish()
+	}
 }

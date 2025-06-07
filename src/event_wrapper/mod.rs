@@ -24,6 +24,10 @@ impl<T: Send + Sync + 'static> Event<T> {
 	pub fn into_inner(self) -> T {
 		self.inner
 	}
+
+	pub fn as_inner(&self) -> &T {
+		&self.inner
+	}
 }
 
 impl<T: Send + Sync + 'static> std::ops::Deref for Event<T> {

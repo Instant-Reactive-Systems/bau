@@ -5,7 +5,7 @@ use bevy::{ecs::prelude::*, prelude::*};
 use deref_derive::{Deref, DerefMut};
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::{auxiliary_index::AuxIndex, par_events::ParEventReader};
+use crate::{auxiliary_index::AuxIndex, par_events::ParEventReader, DuplexChannel};
 
 /// Wraps the `[wire::UserId]` into a component.
 #[derive(Component, Debug, Clone, Copy, Deref, DerefMut)]
@@ -94,7 +94,7 @@ impl UserSessionsMap {
 }
 
 /// Registers the connection bridge to the `bevy::app::App`.
-pub fn register_conns_bridge<TReq, TRes, TErr>(app: &mut App, bridge: Bridge<TReq, TRes, TErr>)
+pub fn register_conns_bridge<TReq, TRes, TErr>(app: &mut App, bridge: ConnsBridge<TReq, TRes, TErr>)
 where
 	TReq: Clone + std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
 	TRes: Clone + std::fmt::Debug + serde::Serialize + Send + Sync + 'static,
@@ -135,7 +135,7 @@ pub struct Conn<TReq, TRes, TErr> {
 
 /// A bridge between the `bevy` and the external system.
 #[derive(Resource)]
-pub struct Bridge<TReq, TRes, TErr> {
+pub struct ConnsBridge<TReq, TRes, TErr> {
 	/// Used for receiving new connections from the server.
 	pub new_conns: Receiver<Conn<TReq, TRes, TErr>>,
 }
@@ -151,7 +151,7 @@ pub struct ConnWrite<TRes, TErr>(pub Sender<Result<wire::TimestampedEvent<TRes>,
 /// Accepts user connections from the external system.
 fn accept_connections<TReq, TRes, TErr>(
 	mut commands: Commands,
-	mut bridge: ResMut<Bridge<TReq, TRes, TErr>>,
+	mut bridge: ResMut<ConnsBridge<TReq, TRes, TErr>>,
 	mut user_sessions_map: ResMut<UserSessionsMap>,
 	mut conn_writer: EventWriter<crate::event_wrapper::Event<wire::Connected<wire::Undetermined>>>,
 	mut first_conn_writer: EventWriter<crate::event_wrapper::Event<wire::FirstConnected<wire::Undetermined>>>,
@@ -392,28 +392,5 @@ fn send_message<TReq, TRes, TErr>(
 				}
 			}
 		},
-	}
-}
-
-/// Creates a pair of mpsc channels which can be used for bidirectional communication.
-pub fn duplex_channel<S: Send, R: Send>(buffer: usize) -> (DuplexChannel<S, R>, DuplexChannel<R, S>) {
-	let (tx_1, rx_1) = tokio::sync::mpsc::channel::<S>(buffer);
-	let (tx_2, rx_2) = tokio::sync::mpsc::channel::<R>(buffer);
-
-	(DuplexChannel { tx: tx_1, rx: rx_2 }, DuplexChannel { tx: tx_2, rx: rx_1 })
-}
-
-/// A bi-directional channel to communicate with the external connection system.
-pub struct DuplexChannel<S, R> {
-	/// Used for sending messages to other duplex channel pair.
-	pub tx: Sender<S>,
-	/// Used for receiving messages from other duplex channel pair.
-	pub rx: Receiver<R>,
-}
-
-impl<S, R> std::fmt::Debug for DuplexChannel<S, R> {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct(&format!("DuplexChannel<{}, {}>", std::any::type_name::<S>(), std::any::type_name::<R>()))
-			.finish()
 	}
 }
