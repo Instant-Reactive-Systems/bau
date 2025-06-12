@@ -12,11 +12,11 @@ pub struct Bridge<TReq, TRes> {
 
 /// Represents the receiving end of the connection.
 #[derive(Resource, Debug, Deref, DerefMut)]
-pub struct MsgRead<TReq>(pub Receiver<TReq>);
+struct MsgRead<TReq>(pub Receiver<TReq>);
 
 /// Represents the write end of the connection.
 #[derive(Resource, Debug, Deref, DerefMut)]
-pub struct MsgWrite<TRes>(pub Sender<TRes>);
+struct MsgWrite<TRes>(pub Sender<TRes>);
 
 /// Registers a bridge to the `bevy::app::App`.
 pub fn register_bridge<TReq, TRes>(app: &mut App, bridge: Bridge<TReq, TRes>)
@@ -50,6 +50,7 @@ where
 				tokio::sync::mpsc::error::TryRecvError::Empty => break,
 				tokio::sync::mpsc::error::TryRecvError::Disconnected => {
 					log::warn!("external part disconnected");
+					break;
 				},
 			},
 		}
