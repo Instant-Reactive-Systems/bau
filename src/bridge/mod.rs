@@ -21,21 +21,20 @@ pub struct MsgWrite<TRes>(pub Sender<TRes>);
 /// Registers a bridge to the `bevy::app::App`.
 pub fn register_bridge<TReq, TRes>(app: &mut App, bridge: Bridge<TReq, TRes>)
 where
-	TReq: Clone + std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
-	TRes: Clone + std::fmt::Debug + serde::Serialize + Send + Sync + 'static,
+	TReq: std::fmt::Debug + Send + Sync + 'static,
+	TRes: Clone + std::fmt::Debug + Send + Sync + 'static,
 {
 	app.insert_resource(MsgRead(bridge.channel.rx)).insert_resource(MsgWrite(bridge.channel.tx));
 	app.add_event::<Event<TReq>>().add_event::<Event<TRes>>();
 
-	app.add_systems(bevy::app::First, recv_msgs::<TReq, TRes>);
-	app.add_systems(bevy::app::Last, send_msgs::<TReq, TRes>);
+	app.add_systems(bevy::app::First, recv_msgs::<TReq>);
+	app.add_systems(bevy::app::Last, send_msgs::<TRes>);
 }
 
 /// Receives messages from the external system.
-fn recv_msgs<TReq, TRes>(mut req_writer: EventWriter<crate::event_wrapper::Event<TReq>>, mut msg_reader: ResMut<MsgRead<TReq>>)
+fn recv_msgs<TReq>(mut req_writer: EventWriter<crate::event_wrapper::Event<TReq>>, mut msg_reader: ResMut<MsgRead<TReq>>)
 where
-	TReq: std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
-	TRes: Send + Sync + 'static,
+	TReq: std::fmt::Debug + Send + Sync + 'static,
 {
 	let span = tracing::trace_span!("recv_msgs");
 	let _guard = span.enter();
@@ -58,16 +57,17 @@ where
 }
 
 /// Sends messages to the external system.
-fn send_msgs<TReq, TRes>(mut res_reader: EventReader<crate::event_wrapper::Event<TRes>>, msg_writer: ResMut<MsgWrite<TRes>>)
+fn send_msgs<TRes>(mut res_reader: EventReader<crate::event_wrapper::Event<TRes>>, msg_writer: ResMut<MsgWrite<TRes>>)
 where
-	TReq: std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
-	TRes: Clone + Send + Sync + 'static,
+	TRes: std::fmt::Debug + Clone + Send + Sync + 'static,
 {
 	let span = tracing::trace_span!("send_msgs");
 	let _guard = span.enter();
 
 	for res in res_reader.read() {
-		if let Err(err) = msg_writer.blocking_send(res.clone().into_inner()) {
+		let res = res.clone().into_inner();
+		log::debug!("res: {res:?}");
+		if let Err(err) = msg_writer.blocking_send(res) {
 			log::error!("reader closed during sending message: {}", err);
 			// TODO: Reader closed during sending of event, this should be handled next tick by receive
 			// messages, is it?
