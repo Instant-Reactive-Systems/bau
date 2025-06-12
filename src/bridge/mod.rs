@@ -1,7 +1,7 @@
 use tokio::sync::mpsc::{Receiver, Sender};
 use bevy::prelude::*;
 
-use crate::DuplexChannel;
+use crate::{DuplexChannel, event_wrapper::Event};
 
 /// A bridge between the `bevy` and the external system.
 #[derive(Resource)]
@@ -24,8 +24,8 @@ where
 	TReq: Clone + std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
 	TRes: Clone + std::fmt::Debug + serde::Serialize + Send + Sync + 'static,
 {
-	app.insert_resource(MsgRead(bridge.channel.rx));
-	app.insert_resource(MsgWrite(bridge.channel.tx));
+	app.insert_resource(MsgRead(bridge.channel.rx)).insert_resource(MsgWrite(bridge.channel.tx));
+	app.add_event::<Event<TReq>>().add_event::<Event<TRes>>();
 
 	app.add_systems(bevy::app::First, recv_msgs::<TReq, TRes>);
 	app.add_systems(bevy::app::Last, send_msgs::<TReq, TRes>);
