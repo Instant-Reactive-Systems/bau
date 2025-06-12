@@ -36,8 +36,8 @@ impl App {
 	/// Inserts a bridge between the external system and the engine.
 	pub fn with_bridge<TReq, TRes>(mut self, bridge: crate::bridge::Bridge<TReq, TRes>) -> Self
 	where
-		TReq: Clone + std::fmt::Debug + serde::de::DeserializeOwned + Send + Sync + 'static,
-		TRes: Clone + std::fmt::Debug + serde::Serialize + Send + Sync + 'static,
+		TReq: Clone + std::fmt::Debug + Send + Sync + 'static,
+		TRes: Clone + std::fmt::Debug + Send + Sync + 'static,
 	{
 		crate::bridge::register_bridge(&mut self.app, bridge);
 		self
