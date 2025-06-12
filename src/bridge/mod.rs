@@ -40,13 +40,15 @@ where
 	let span = tracing::trace_span!("recv_msgs");
 	let _guard = span.enter();
 	loop {
-		match msg_reader.try_recv() {
+		let msg = msg_reader.try_recv();
+		log::debug!("msg: {msg:?}");
+		match msg {
 			Ok(msg) => {
 				log::debug!("received a message, sending through...");
 				req_writer.send(crate::event_wrapper::Event::new(msg));
 			},
 			Err(err) => match err {
-				tokio::sync::mpsc::error::TryRecvError::Empty => {},
+				tokio::sync::mpsc::error::TryRecvError::Empty => break,
 				tokio::sync::mpsc::error::TryRecvError::Disconnected => {
 					log::warn!("external part disconnected");
 				},
