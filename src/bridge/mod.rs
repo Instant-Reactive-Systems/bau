@@ -80,7 +80,7 @@ fn send_msgs<TReq, TRes, TErr>(
 
 	for err in err_reader.read() {
 		if let Err(err) = msg_writer.blocking_send(Err(err.clone().into_inner())) {
-			log::error!("reader closed during sending message: {}", err);
+			log::error!("reader closed during sending error: {}", err);
 			// TODO: Reader closed during sending of event, this should be handled next tick by receive
 			// messages, is it?
 		}
