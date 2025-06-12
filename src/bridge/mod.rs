@@ -39,9 +39,7 @@ where
 	let span = tracing::trace_span!("recv_msgs");
 	let _guard = span.enter();
 	loop {
-		let msg = msg_reader.try_recv();
-		log::debug!("msg: {msg:?}");
-		match msg {
+		match msg_reader.try_recv() {
 			Ok(msg) => {
 				log::debug!("received a message, sending through...");
 				req_writer.send(crate::event_wrapper::Event::new(msg));
@@ -66,9 +64,7 @@ where
 	let _guard = span.enter();
 
 	for res in res_reader.read() {
-		let res = res.clone().into_inner();
-		log::debug!("res: {res:?}");
-		if let Err(err) = msg_writer.blocking_send(res) {
+		if let Err(err) = msg_writer.blocking_send(res.clone().into_inner()) {
 			log::error!("reader closed during sending message: {}", err);
 			// TODO: Reader closed during sending of event, this should be handled next tick by receive
 			// messages, is it?
