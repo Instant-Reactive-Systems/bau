@@ -107,11 +107,11 @@ where
 	app.add_systems(bevy::app::First, accept_connections::<TReq, TRes, TErr>);
 	app.add_systems(
 		crate::schedules::Input,
-		accept_connections::<TReq, TRes, TErr>.after(receive_messages::<TReq, TRes, TErr>),
+		receive_messages::<TReq, TRes, TErr>.after(accept_connections::<TReq, TRes, TErr>),
 	);
 	app.add_systems(
 		crate::schedules::Output,
-		receive_messages::<TReq, TRes, TErr>.after(send_messages::<TReq, TRes, TErr>),
+		send_messages::<TReq, TRes, TErr>.after(receive_messages::<TReq, TRes, TErr>),
 	);
 }
 
