@@ -105,8 +105,14 @@ where
 	app.insert_resource(bridge);
 
 	app.add_systems(bevy::app::First, accept_connections::<TReq, TRes, TErr>);
-	app.add_systems(crate::schedules::Input, receive_messages::<TReq, TRes, TErr>);
-	app.add_systems(crate::schedules::Output, send_messages::<TReq, TRes, TErr>);
+	app.add_systems(
+		crate::schedules::Input,
+		accept_connections::<TReq, TRes, TErr>.after(receive_messages::<TReq, TRes, TErr>),
+	);
+	app.add_systems(
+		crate::schedules::Output,
+		receive_messages::<TReq, TRes, TErr>.after(send_messages::<TReq, TRes, TErr>),
+	);
 }
 
 /// A message received from the external system.
