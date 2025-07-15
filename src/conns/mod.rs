@@ -155,7 +155,6 @@ pub struct ConnRead<TReq>(pub Receiver<ExternalReq<TReq>>);
 pub struct ConnWrite<TRes, TErr>(pub Sender<Result<wire::TimestampedEvent<TRes>, TErr>>);
 
 /// Accepts user connections from the external system.
-#[tracing::instrument(skip_all)]
 fn accept_connections<TReq, TRes, TErr>(
 	mut commands: Commands,
 	mut bridge: ResMut<ConnsBridge<TReq, TRes, TErr>>,
@@ -210,7 +209,6 @@ fn accept_connections<TReq, TRes, TErr>(
 }
 
 /// Receives messages from the external system.
-#[tracing::instrument(skip_all)]
 fn receive_messages<TReq, TRes, TErr>(
 	mut commands: Commands,
 	mut req_writer: EventWriter<crate::event_wrapper::Event<wire::Req<TReq>>>,
@@ -299,7 +297,6 @@ fn receive_messages<TReq, TRes, TErr>(
 }
 
 /// Sends messages from the game engine to the server bridge server side
-#[tracing::instrument(skip_all)]
 fn send_messages<TReq, TRes, TErr>(
 	mut res_reader: ParEventReader<crate::event_wrapper::Event<wire::Res<TRes>>>,
 	mut err_reader: ParEventReader<crate::event_wrapper::Event<wire::Error<TErr>>>,
