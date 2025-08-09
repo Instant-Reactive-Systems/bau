@@ -58,9 +58,31 @@ impl App {
 
 	/// Runs the app in the current thread.
 	pub fn run(mut self) -> Self {
-		// TODO: add custom schedule planning given the current activity
-		self.app.add_plugins(bevy::app::ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(1.0 / 60.0)));
-		self.app.run();
+		loop {
+			let start = std::time::Instant::now();
+			self.app.update(); // Run schedule once
+			let elapsed = start.elapsed();
+
+			// Check for exit
+			if let Some(exit_events) = self.app.world().get_resource::<Events<AppExit>>() {
+				if !exit_events.is_empty() {
+					break;
+				}
+			}
+
+			// Dynamic sleep
+			let sleep_duration = if elapsed > Duration::from_millis(50) {
+				Duration::from_secs_f64(1.0 / 120.0)
+			} else if elapsed > Duration::from_millis(35) {
+				Duration::from_secs_f64(1.0 / 60.0)
+			} else if elapsed > Duration::from_millis(20) {
+				Duration::from_secs_f64(1.0 / 30.0)
+			} else {
+				Duration::from_secs_f64(1.0 / 15.0)
+			};
+			std::thread::sleep(sleep_duration);
+		}
+
 		self
 	}
 }
