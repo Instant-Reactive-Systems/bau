@@ -247,6 +247,10 @@ fn receive_messages<TReq, TRes, TErr>(
 						commands.entity(entity).despawn();
 					},
 					ExternalReq::Authenticated(new_user_id) => {
+						if user_id.0 == new_user_id {
+							log::trace!("user authenticated on an already authenticated session, skipping...");
+						}
+
 						// remove the session from the anonymous sessions
 						let remaining = user_sessions_map.remove(user_id.0, session_id.0);
 
