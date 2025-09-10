@@ -50,7 +50,7 @@ impl UserSessionsMap {
 		self.0.get(id)
 	}
 
-	/// Returns a mutable reference to the session id for the given target.
+	/// Returns a mutable reference to the session ids for the given target.
 	pub fn get_mut(&mut self, id: &wire::UserId) -> Option<&mut Vec<wire::SessionId>> {
 		self.0.get_mut(id)
 	}
@@ -167,44 +167,46 @@ fn accept_connections<TReq, TRes, TErr>(
 	TRes: Send + Sync + 'static,
 	TErr: Send + Sync + 'static,
 {
-	let new_conn = match bridge.new_conns.try_recv() {
-		Ok(conn) => conn,
-		Err(err) => match err {
-			tokio::sync::mpsc::error::TryRecvError::Empty => return, // no new connections
-			tokio::sync::mpsc::error::TryRecvError::Disconnected => {
-				log::error!("bridge channel closed, shutting down");
-				exit.send(bevy::app::AppExit::Success);
-				return;
+	loop {
+		let new_conn = match bridge.new_conns.try_recv() {
+			Ok(conn) => conn,
+			Err(err) => match err {
+				tokio::sync::mpsc::error::TryRecvError::Empty => return, // no new connections
+				tokio::sync::mpsc::error::TryRecvError::Disconnected => {
+					log::error!("bridge channel closed, shutting down");
+					exit.send(bevy::app::AppExit::Success);
+					return;
+				},
 			},
-		},
-	};
+		};
 
-	// reason we manually iterate and insert is because we need the entity index
-	// (for the session id) otherwise we would just use `commands.spawn_batch()`
-	let mut entity = commands.spawn_empty();
-	let session_id = entity.id().index();
-	let Conn { user_id, user_socket_address, channel } = new_conn;
+		// reason we manually iterate and insert is because we need the entity index
+		// (for the session id) otherwise we would just use `commands.spawn_batch()`
+		let mut entity = commands.spawn_empty();
+		let session_id = entity.id().index();
+		let Conn { user_id, user_socket_address, channel } = new_conn;
 
-	let span = tracing::trace_span!(
-		"accept_connections",
-		user_id = user_id.hyphenated().to_string(),
-		session_id = session_id.to_string(),
-		addr = user_socket_address.to_string(),
-	);
-	let _guard = span.enter();
+		let span = tracing::trace_span!(
+			"accept_connections",
+			user_id = user_id.hyphenated().to_string(),
+			session_id = session_id.to_string(),
+			addr = user_socket_address.to_string(),
+		);
+		let _guard = span.enter();
 
-	let bundle = (SessionId(session_id), UserId(user_id), ConnRead(channel.rx), ConnWrite(channel.tx));
-	entity.insert(bundle);
+		let bundle = (SessionId(session_id), UserId(user_id), ConnRead(channel.rx), ConnWrite(channel.tx));
+		entity.insert(bundle);
 
-	// track how many sessions the user has active (in order to report status updates about his connection)
-	if let Some(sessions) = user_sessions_map.get_mut(&user_id) {
-		sessions.push(session_id);
-		log::trace!("user now has {} sessions active", sessions.len());
-		conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id, session_id)));
-	} else {
-		log::trace!("user just hopped on");
-		user_sessions_map.insert(user_id, session_id);
-		first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id, session_id)));
+		// track how many sessions the user has active (in order to report status updates about his connection)
+		if let Some(sessions) = user_sessions_map.get_mut(&user_id) {
+			sessions.push(session_id);
+			log::trace!("user now has {} sessions active", sessions.len());
+			conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id, session_id)));
+		} else {
+			log::trace!("user just hopped on");
+			user_sessions_map.insert(user_id, session_id);
+			first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id, session_id)));
+		}
 	}
 }
 
