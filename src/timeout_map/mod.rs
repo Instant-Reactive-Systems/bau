@@ -3,7 +3,7 @@
 //! Provides a utility that emits expired timeout events if the timeout associated with the target has expired.
 
 use bevy::prelude::*;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::ops::DerefMut;
 use std::time::{Instant, Duration};
 
@@ -55,7 +55,7 @@ where
 	/// A queue of time-sorted targets.
 	///
 	/// Separated into sorted duration categories in order to properly handle timeout passes.
-	queues: BTreeMap<Duration, Vec<wire::Target>>,
+	queues: HashMap<Duration, Vec<wire::Target>>,
 	_phant: std::marker::PhantomData<M>,
 }
 
