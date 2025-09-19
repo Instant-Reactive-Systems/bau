@@ -50,7 +50,7 @@ impl UserSessionsMap {
 		self.0.get(id)
 	}
 
-	/// Returns a mutable reference to the session id for the given target.
+	/// Returns a mutable reference to the session ids for the given target.
 	pub fn get_mut(&mut self, id: &wire::UserId) -> Option<&mut Vec<wire::SessionId>> {
 		self.0.get_mut(id)
 	}
@@ -167,44 +167,46 @@ fn accept_connections<TReq, TRes, TErr>(
 	TRes: Send + Sync + 'static,
 	TErr: Send + Sync + 'static,
 {
-	let new_conn = match bridge.new_conns.try_recv() {
-		Ok(conn) => conn,
-		Err(err) => match err {
-			tokio::sync::mpsc::error::TryRecvError::Empty => return, // no new connections
-			tokio::sync::mpsc::error::TryRecvError::Disconnected => {
-				log::error!("bridge channel closed, shutting down");
-				exit.send(bevy::app::AppExit::Success);
-				return;
+	loop {
+		let new_conn = match bridge.new_conns.try_recv() {
+			Ok(conn) => conn,
+			Err(err) => match err {
+				tokio::sync::mpsc::error::TryRecvError::Empty => return, // no new connections
+				tokio::sync::mpsc::error::TryRecvError::Disconnected => {
+					log::error!("bridge channel closed, shutting down");
+					exit.send(bevy::app::AppExit::Success);
+					return;
+				},
 			},
-		},
-	};
+		};
 
-	// reason we manually iterate and insert is because we need the entity index
-	// (for the session id) otherwise we would just use `commands.spawn_batch()`
-	let mut entity = commands.spawn_empty();
-	let session_id = entity.id().index();
-	let Conn { user_id, user_socket_address, channel } = new_conn;
+		// reason we manually iterate and insert is because we need the entity index
+		// (for the session id) otherwise we would just use `commands.spawn_batch()`
+		let mut entity = commands.spawn_empty();
+		let session_id = entity.id().index();
+		let Conn { user_id, user_socket_address, channel } = new_conn;
 
-	let span = tracing::trace_span!(
-		"accept_connections",
-		user_id = user_id.hyphenated().to_string(),
-		session_id = session_id.to_string(),
-		addr = user_socket_address.to_string(),
-	);
-	let _guard = span.enter();
+		let span = tracing::trace_span!(
+			"accept_connections",
+			user_id = user_id.hyphenated().to_string(),
+			session_id = session_id.to_string(),
+			addr = user_socket_address.to_string(),
+		);
+		let _guard = span.enter();
 
-	let bundle = (SessionId(session_id), UserId(user_id), ConnRead(channel.rx), ConnWrite(channel.tx));
-	entity.insert(bundle);
+		let bundle = (SessionId(session_id), UserId(user_id), ConnRead(channel.rx), ConnWrite(channel.tx));
+		entity.insert(bundle);
 
-	// track how many sessions the user has active (in order to report status updates about his connection)
-	if let Some(sessions) = user_sessions_map.get_mut(&user_id) {
-		sessions.push(session_id);
-		log::trace!("user now has {} sessions active", sessions.len());
-		conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id, session_id)));
-	} else {
-		log::trace!("user just hopped on");
-		user_sessions_map.insert(user_id, session_id);
-		first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id, session_id)));
+		// track how many sessions the user has active (in order to report status updates about his connection)
+		if let Some(sessions) = user_sessions_map.get_mut(&user_id) {
+			sessions.push(session_id);
+			log::trace!("user now has {} sessions active", sessions.len());
+			conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id, session_id)));
+		} else {
+			log::trace!("user just hopped on");
+			user_sessions_map.insert(user_id, session_id);
+			first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id, session_id)));
+		}
 	}
 }
 
@@ -249,24 +251,24 @@ fn receive_messages<TReq, TRes, TErr>(
 					ExternalReq::Authenticated(new_user_id) => {
 						if user_id.0 == new_user_id {
 							log::trace!("user authenticated on an already authenticated session, skipping...");
-						}
-
-						// remove the session from the anonymous sessions
-						let remaining = user_sessions_map.remove(user_id.0, session_id.0);
-
-						// insert the session as an authenticated user
-						user_id.0 = new_user_id;
-						if let Some(sessions) = user_sessions_map.get_mut(&user_id.0) {
-							sessions.push(session_id.0);
-							log::trace!("user now has {} sessions active", sessions.len());
-							conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id.0, session_id.0)));
 						} else {
-							log::trace!("user just hopped on");
-							user_sessions_map.insert(user_id.0, session_id.0);
-							first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id.0, session_id.0)));
-						}
+							// remove the session from the anonymous sessions
+							let remaining = user_sessions_map.remove(user_id.0, session_id.0);
 
-						log::debug!("user is now authenticated, {remaining} anonymous sessions left");
+							// insert the session as an authenticated user
+							user_id.0 = new_user_id;
+							if let Some(sessions) = user_sessions_map.get_mut(&user_id.0) {
+								sessions.push(session_id.0);
+								log::trace!("user now has {} sessions active", sessions.len());
+								conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id.0, session_id.0)));
+							} else {
+								log::trace!("user just hopped on");
+								user_sessions_map.insert(user_id.0, session_id.0);
+								first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id.0, session_id.0)));
+							}
+
+							log::debug!("user is now authenticated, {remaining} anonymous sessions left");
+						}
 					},
 					ExternalReq::Unauthenticated => {
 						// remove the session from the authenticated sessions
@@ -363,7 +365,7 @@ fn send_message<TReq, TRes, TErr>(
 						wire::AuthTarget::All(user_id) => {
 							let Some(sessions) = user_sessions_map.get(user_id) else {
 								// we don't care if the session phased out by this point, just skip it
-								return;
+								continue;
 							};
 
 							for session_id in sessions.iter() {
@@ -378,7 +380,7 @@ fn send_message<TReq, TRes, TErr>(
 						wire::AuthTarget::Specific(_user_id, session_id) => {
 							let Some(entity) = session_to_entity_map.get_by_left(session_id) else {
 								// we don't care if the session phased out by this point, just skip it
-								return;
+								continue;
 							};
 							let writer = query.get(*entity).expect("should exist here");
 
@@ -390,7 +392,7 @@ fn send_message<TReq, TRes, TErr>(
 					wire::Target::Anon(session_id) => {
 						let Some(entity) = session_to_entity_map.get_by_left(session_id) else {
 							// we don't care if the session phased out by this point, just skip it
-							return;
+							continue;
 						};
 						let writer = query.get(*entity).expect("should exist here");
 
