@@ -225,79 +225,83 @@ fn receive_messages<TReq, TRes, TErr>(
 	TErr: Send + Sync + 'static,
 {
 	for (entity, session_id, mut user_id, mut rx) in query.iter_mut() {
-		match rx.try_recv() {
-			Ok(msg) => {
-				let span = tracing::trace_span!("receive_messages", user_id = user_id.hyphenated().to_string(), session_id = session_id.to_string());
-				let _guard = span.enter();
-				let target = wire::Target::new(user_id.0, session_id.0);
-				let corrid = wire::CorrelationId::new_v4();
+		'msg_loop: loop {
+			match rx.try_recv() {
+				Ok(msg) => {
+					let span = tracing::trace_span!("receive_messages", user_id = user_id.hyphenated().to_string(), session_id = session_id.to_string());
+					let _guard = span.enter();
+					let target = wire::Target::new(user_id.0, session_id.0);
+					let corrid = wire::CorrelationId::new_v4();
 
-				match msg {
-					ExternalReq::UserAction(action) => {
-						log::debug!("user requested an action: {action:?}");
-						req_writer.send(crate::event_wrapper::Event::new(wire::Req::new(target, action, corrid)));
-					},
-					ExternalReq::Disconnected => {
-						let remaining = user_sessions_map.remove(user_id.0, session_id.0);
-						if remaining == 0 {
-							disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-							log::debug!("user disconnected, no more remaining sessions");
-						} else {
-							log::debug!("user disconnected, {} remaining sessions", remaining);
-						}
-
-						commands.entity(entity).despawn();
-					},
-					ExternalReq::Authenticated(new_user_id) => {
-						if user_id.0 == new_user_id {
-							log::trace!("user authenticated on an already authenticated session, skipping...");
-						} else {
-							// remove the session from the anonymous sessions
+					match msg {
+						ExternalReq::UserAction(action) => {
+							log::debug!("user requested an action: {action:?}");
+							req_writer.send(crate::event_wrapper::Event::new(wire::Req::new(target, action, corrid)));
+						},
+						ExternalReq::Disconnected => {
 							let remaining = user_sessions_map.remove(user_id.0, session_id.0);
-
-							// insert the session as an authenticated user
-							user_id.0 = new_user_id;
-							if let Some(sessions) = user_sessions_map.get_mut(&user_id.0) {
-								sessions.push(session_id.0);
-								log::trace!("user now has {} sessions active", sessions.len());
-								conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id.0, session_id.0)));
+							if remaining == 0 {
+								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
+								log::debug!("user disconnected, no more remaining sessions");
 							} else {
-								log::trace!("user just hopped on");
-								user_sessions_map.insert(user_id.0, session_id.0);
-								first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id.0, session_id.0)));
+								log::debug!("user disconnected, {} remaining sessions", remaining);
 							}
 
-							log::debug!("user is now authenticated, {remaining} anonymous sessions left");
-						}
-					},
-					ExternalReq::Unauthenticated => {
-						// remove the session from the authenticated sessions
-						let remaining = user_sessions_map.remove(user_id.0, session_id.0);
-						if remaining == 0 {
+							commands.entity(entity).despawn();
+						},
+						ExternalReq::Authenticated(new_user_id) => {
+							if user_id.0 == new_user_id {
+								log::trace!("user authenticated on an already authenticated session, skipping...");
+							} else {
+								// remove the session from the anonymous sessions
+								let remaining = user_sessions_map.remove(user_id.0, session_id.0);
+
+								// insert the session as an authenticated user
+								user_id.0 = new_user_id;
+								if let Some(sessions) = user_sessions_map.get_mut(&user_id.0) {
+									sessions.push(session_id.0);
+									log::trace!("user now has {} sessions active", sessions.len());
+									conn_writer.send(crate::event_wrapper::Event::new(wire::Connected::new(user_id.0, session_id.0)));
+								} else {
+									log::trace!("user just hopped on");
+									user_sessions_map.insert(user_id.0, session_id.0);
+									first_conn_writer.send(crate::event_wrapper::Event::new(wire::FirstConnected::new(user_id.0, session_id.0)));
+								}
+
+								log::debug!("user is now authenticated, {remaining} anonymous sessions left");
+							}
+						},
+						ExternalReq::Unauthenticated => {
+							// remove the session from the authenticated sessions
+							let remaining = user_sessions_map.remove(user_id.0, session_id.0);
+							if remaining == 0 {
+								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
+							}
+
+							// insert the session as an anonymous user
+							user_id.0 = wire::ANON_USER_ID;
+							user_sessions_map.insert(user_id.0, session_id.0);
+							log::debug!("user is now unauthenticated, {remaining} sessions left");
+						},
+					};
+				},
+				Err(err) => {
+					match err {
+						tokio::sync::mpsc::error::TryRecvError::Empty => {},
+						tokio::sync::mpsc::error::TryRecvError::Disconnected => {
+							// this branch is for when the server shuts down
+							// do not log anything here because for 100+ users, you can assume how useless
+							// the logs become
+
+							user_sessions_map.remove(user_id.0, session_id.0);
 							disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-						}
+							commands.entity(entity).despawn();
+						},
+					}
 
-						// insert the session as an anonymous user
-						user_id.0 = wire::ANON_USER_ID;
-						user_sessions_map.insert(user_id.0, session_id.0);
-						log::debug!("user is now unauthenticated, {remaining} sessions left");
-					},
-				};
-			},
-			Err(err) => {
-				match err {
-					tokio::sync::mpsc::error::TryRecvError::Empty => {},
-					tokio::sync::mpsc::error::TryRecvError::Disconnected => {
-						// this branch is for when the server shuts down
-						// do not log anything here because for 100+ users, you can assume how useless
-						// the logs become
-
-						user_sessions_map.remove(user_id.0, session_id.0);
-						disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-						commands.entity(entity).despawn();
-					},
-				}
-			},
+					break 'msg_loop;
+				},
+			}
 		}
 	}
 }
