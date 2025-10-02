@@ -121,6 +121,7 @@ where
 	/// Transforms the target into a general target.
 	fn transform_target(target: &wire::Target) -> wire::Target {
 		match target {
+			wire::Target::Bot(..) => *target,
 			wire::Target::Anon(..) => *target,
 			wire::Target::Auth(auth_target) => wire::Target::Auth(wire::AuthTarget::All(auth_target.id())),
 		}
