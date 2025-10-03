@@ -75,8 +75,8 @@ where
 	}
 
 	/// Inserts a new target to the map.
-	pub fn insert(&mut self, target: &wire::Target, value: T) {
-		self.0.insert(Self::transform_target(target), value);
+	pub fn insert(&mut self, target: wire::Target, value: T) {
+		self.0.insert(Self::transform_target(&target), value);
 	}
 
 	/// Removes a target from the map.
@@ -105,7 +105,7 @@ where
 	) {
 		for event in participant_added_reader.read() {
 			let TargetJoined { target, value } = event.clone().into_inner();
-			map.insert(&target, value);
+			map.insert(target, value);
 		}
 
 		for event in participant_left_reader.read() {
