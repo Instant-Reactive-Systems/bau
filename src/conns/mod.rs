@@ -230,7 +230,11 @@ fn receive_messages<TReq, TRes, TErr>(
 				Ok(msg) => {
 					let span = tracing::trace_span!("receive_messages", user_id = user_id.hyphenated().to_string(), session_id = session_id.to_string());
 					let _guard = span.enter();
-					let target = wire::Target::new_auth_specific(user_id.0, session_id.0);
+					let target = if user_id.0 == wire::ANON_USER_ID {
+						wire::Target::new_anon(session_id.0)
+					} else {
+						wire::Target::new_auth_specific(user_id.0, session_id.0)
+					};
 					let corrid = wire::CorrelationId::new_v4();
 
 					match msg {
