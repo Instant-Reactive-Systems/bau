@@ -79,21 +79,26 @@ where
 
 	/// Inserts a new target timeout to the map.
 	pub fn insert(&mut self, target: wire::Target, duration: Duration) {
-		let now = Instant::now();
 		let target = Self::transform_target(&target);
+
+		// If a timeout for this target already exists, remove it before inserting the new one.
+		// This prevents duplicate entries and keeps the data structures synchronized.
+		if self.timeouts.contains_key(&target) {
+			self.remove(&target);
+		}
+
+		let now = Instant::now();
 		let n_in_queue = self.queues.entry(duration).or_default().len();
 		self.timeouts.insert(target, (duration, now, n_in_queue));
 		self.queues.get_mut(&duration).unwrap().push(target);
+
+		self.check_invariants();
 	}
 
 	/// Inserts new target timeouts to the map.
 	pub fn insert_many(&mut self, targets: impl IntoIterator<Item = wire::Target>, duration: Duration) {
-		let now = Instant::now();
 		for target in targets {
-			let target = Self::transform_target(&target);
-			let n_in_queue = self.queues.entry(duration).or_default().len();
-			self.timeouts.insert(target, (duration, now, n_in_queue));
-			self.queues.get_mut(&duration).unwrap().push(target);
+			self.insert(target, duration);
 		}
 	}
 
@@ -108,6 +113,8 @@ where
 				*idx -= 1;
 			}
 		}
+
+		self.check_invariants();
 	}
 
 	/// Removes targets from the map.
@@ -125,6 +132,48 @@ where
 			wire::Target::Anon(..) => *target,
 			wire::Target::Auth(auth_target) => wire::Target::Auth(wire::AuthTarget::All(auth_target.id())),
 		}
+	}
+
+	/// Checks if the invariants of the data structure are met.
+	///
+	/// This is a no-op in release builds.
+	fn check_invariants(&self) {
+		let mut checked_targets = std::collections::HashSet::new();
+
+		for (duration, queue) in &self.queues {
+			for (i, target) in queue.iter().enumerate() {
+				// Invariant: Target must not be a duplicate in the same queue
+				debug_assert!(
+					checked_targets.insert(target),
+					"Invariant violated: Duplicate target {:?} in queue for duration {:?}",
+					target,
+					duration
+				);
+
+				// Invariant: Target in queue must exist in timeouts map
+				debug_assert!(
+					self.timeouts.contains_key(target),
+					"Invariant violated: Target {:?} in queue not in timeouts map",
+					target
+				);
+				let (timeout_duration, _, timeout_idx) = self.timeouts.get(target).unwrap();
+
+				// Invariant: Duration in timeout entry must match the queue it's in
+				debug_assert_eq!(*duration, *timeout_duration, "Invariant violated: Duration mismatch for target {:?}", target);
+
+				// Invariant: Index in timeout entry must match its position in the queue
+				debug_assert_eq!(i, *timeout_idx, "Invariant violated: Index mismatch for target {:?}", target);
+			}
+		}
+
+		// Invariant: Every target in timeouts map must exist in a queue
+		debug_assert_eq!(
+			self.timeouts.len(),
+			checked_targets.len(),
+			"Invariant violated: Mismatch between number of timeouts ({}) and number of targets in queues ({})",
+			self.timeouts.len(),
+			checked_targets.len()
+		);
 	}
 }
 
