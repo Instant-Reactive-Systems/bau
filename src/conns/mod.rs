@@ -68,7 +68,11 @@ impl UserSessionsMap {
 			1
 		};
 
-		num_sessions
+		if user_id == wire::ANON_USER_ID {
+			1
+		} else {
+			num_sessions
+		}
 	}
 
 	/// Removes a user session from the map.
@@ -84,7 +88,11 @@ impl UserSessionsMap {
 				sessions.retain(|session| session != &session_id);
 			}
 
-			len - 1
+			if user_id == wire::ANON_USER_ID {
+				0
+			} else {
+				len - 1
+			}
 		} else {
 			0
 		};
@@ -248,8 +256,7 @@ fn receive_messages<TReq, TRes, TErr>(
 								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
 								log::debug!("user disconnected, no more remaining sessions");
 							} else {
-								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-								log::debug!("anon user disconnected, {} remaining sessions", remaining);
+								log::debug!("user disconnected, {} remaining sessions", remaining);
 							}
 
 							commands.entity(entity).insert(Deleted);
@@ -261,6 +268,9 @@ fn receive_messages<TReq, TRes, TErr>(
 							} else {
 								// remove the session from the anonymous sessions
 								let remaining = user_sessions_map.remove(user_id.0, session_id.0);
+								if remaining == 0 {
+									disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
+								}
 
 								// insert the session as an authenticated user
 								user_id.0 = new_user_id;
@@ -282,6 +292,9 @@ fn receive_messages<TReq, TRes, TErr>(
 							let remaining = user_sessions_map.remove(user_id.0, session_id.0);
 							if remaining == 0 {
 								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
+								log::debug!("user unauthenticated, no more remaining sessions");
+							} else {
+								log::debug!("user unauthenticated, {} remaining sessions", remaining);
 							}
 
 							// insert the session as an anonymous user
