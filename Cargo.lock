@@ -4226,7 +4226,7 @@ dependencies = [
 [[package]]
 name = "wire"
 version = "0.1.0"
-source = "git+https://github.com/Instant-Reactive-Systems/wire.git#2a805e4f31a0c11861b2dcd043d9fb122e7d7d82"
+source = "git+https://github.com/Instant-Reactive-Systems/wire.git#e42b4a52fb2f166c93ac5f1dae8f16cfa7ea018c"
 dependencies = [
  "chrono",
  "serde",
@@ -4238,7 +4238,7 @@ dependencies = [
 [[package]]
 name = "wire-macros"
 version = "0.1.0"
-source = "git+https://github.com/Instant-Reactive-Systems/wire.git#2a805e4f31a0c11861b2dcd043d9fb122e7d7d82"
+source = "git+https://github.com/Instant-Reactive-Systems/wire.git#e42b4a52fb2f166c93ac5f1dae8f16cfa7ea018c"
 dependencies = [
  "proc-macro2",
  "quote",
