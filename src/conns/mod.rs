@@ -248,9 +248,8 @@ fn receive_messages<TReq, TRes, TErr>(
 								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
 								log::debug!("user disconnected, no more remaining sessions");
 							} else {
-								log::debug!("anon user disconnected, {} remaining sessions", remaining);
 								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-
+								log::debug!("anon user disconnected, {} remaining sessions", remaining);
 							}
 
 							commands.entity(entity).insert(Deleted);
