@@ -5,7 +5,7 @@ use bevy::{ecs::prelude::*, prelude::*};
 use deref_derive::{Deref, DerefMut};
 use tokio::sync::mpsc::{Receiver, Sender};
 
-use crate::{auxiliary_index::AuxIndex, par_events::ParEventReader, DuplexChannel};
+use crate::{auxiliary_index::AuxIndex, par_events::ParEventReader, defer_delete::Deleted, DuplexChannel};
 
 /// Wraps the `[wire::UserId]` into a component.
 #[derive(Component, Debug, Clone, Copy, Deref, DerefMut)]
@@ -251,7 +251,7 @@ fn receive_messages<TReq, TRes, TErr>(
 								log::debug!("user disconnected, {} remaining sessions", remaining);
 							}
 
-							commands.entity(entity).despawn();
+							commands.entity(entity).insert(Deleted);
 							break 'msg_loop;
 						},
 						ExternalReq::Authenticated(new_user_id) => {
@@ -300,7 +300,7 @@ fn receive_messages<TReq, TRes, TErr>(
 
 							user_sessions_map.remove(user_id.0, session_id.0);
 							disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-							commands.entity(entity).despawn();
+							commands.entity(entity).insert(Deleted);
 						},
 					}
 
