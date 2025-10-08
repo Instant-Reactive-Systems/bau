@@ -252,6 +252,7 @@ fn receive_messages<TReq, TRes, TErr>(
 							}
 
 							commands.entity(entity).despawn();
+							break 'msg_loop;
 						},
 						ExternalReq::Authenticated(new_user_id) => {
 							if user_id.0 == new_user_id {
