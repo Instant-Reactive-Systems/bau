@@ -7,7 +7,7 @@ version = "0.1.0"
 
 [dependencies]
 wire = { git =  "https://github.com/Instant-Reactive-Systems/wire.git" }
-bevy = { version = "0.15", default-features = false, features = ["multi_threaded"] }
+bevy = { version = "0.15", default-features = false }
 log = "0.4"
 bimap = "0.6"
 deref-derive = "0.1"
@@ -27,3 +27,6 @@ trace = ["bevy/trace"]
 trace_chrome = ["bevy/trace_chrome"]
 trace_tracy = ["bevy/trace_tracy"]
 trace_tracy_memory = ["bevy/trace_tracy_memory"]
+# app settings
+load-based-sleep = []
+multi-threaded = ["bevy/multi_threaded"]

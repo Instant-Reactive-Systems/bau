@@ -59,8 +59,10 @@ impl App {
 	/// Runs the app in the current thread.
 	pub fn run(mut self) -> Self {
 		loop {
+			#[cfg(feature = "load-based-sleep")]
 			let start = std::time::Instant::now();
 			self.app.update(); // Run schedule once
+			#[cfg(feature = "load-based-sleep")]
 			let elapsed = start.elapsed();
 
 			// Check for exit
@@ -71,6 +73,9 @@ impl App {
 			}
 
 			// Dynamic sleep
+			let sleep_duration = Duration::from_secs_f64(1.0 / 60.0);
+
+			#[cfg(feature = "load-based-sleep")]
 			let sleep_duration = if elapsed > Duration::from_millis(50) {
 				Duration::from_secs_f64(1.0 / 120.0)
 			} else if elapsed > Duration::from_millis(35) {
