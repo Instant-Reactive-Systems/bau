@@ -113,14 +113,8 @@ where
 	app.insert_resource(bridge);
 
 	app.add_systems(bevy::app::First, accept_connections::<TReq, TRes, TErr>);
-	app.add_systems(
-		crate::schedules::Input,
-		receive_messages::<TReq, TRes, TErr>.after(accept_connections::<TReq, TRes, TErr>),
-	);
-	app.add_systems(
-		crate::schedules::Output,
-		send_messages::<TReq, TRes, TErr>.after(receive_messages::<TReq, TRes, TErr>),
-	);
+	app.add_systems(crate::schedules::Input, receive_messages::<TReq, TRes, TErr>);
+	app.add_systems(crate::schedules::Output, send_messages::<TReq, TRes, TErr>);
 }
 
 /// A message received from the external system.
@@ -288,19 +282,23 @@ fn receive_messages<TReq, TRes, TErr>(
 							}
 						},
 						ExternalReq::Unauthenticated => {
-							// remove the session from the authenticated sessions
-							let remaining = user_sessions_map.remove(user_id.0, session_id.0);
-							if remaining == 0 {
-								disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
-								log::debug!("user unauthenticated, no more remaining sessions");
+							if user_id.0 == wire::ANON_USER_ID {
+								log::trace!("user unauthenticated on an already unauthenticated session, skipping...");
 							} else {
-								log::debug!("user unauthenticated, {} remaining sessions", remaining);
-							}
+								// remove the session from the authenticated sessions
+								let remaining = user_sessions_map.remove(user_id.0, session_id.0);
+								if remaining == 0 {
+									disconn_writer.send(crate::event_wrapper::Event::new(wire::Disconnected::new(user_id.0, session_id.0)));
+									log::debug!("user unauthenticated, no more remaining sessions");
+								} else {
+									log::debug!("user unauthenticated, {} remaining sessions", remaining);
+								}
 
-							// insert the session as an anonymous user
-							user_id.0 = wire::ANON_USER_ID;
-							user_sessions_map.insert(user_id.0, session_id.0);
-							log::debug!("user is now unauthenticated, {remaining} sessions left");
+								// insert the session as an anonymous user
+								user_id.0 = wire::ANON_USER_ID;
+								user_sessions_map.insert(user_id.0, session_id.0);
+								log::debug!("user is now unauthenticated, {remaining} sessions left");
+							}
 						},
 					};
 				},

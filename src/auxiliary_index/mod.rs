@@ -39,7 +39,9 @@ where
 	/// Registers the [`AuxIndex`] as a resource and adds the necessary systems.
 	pub fn register(self, app: &mut App) {
 		app.insert_resource(self);
-		app.add_systems(crate::schedules::PostInput, (Self::on_add, Self::on_remove));
+		app.add_systems(crate::schedules::PostInput, Self::on_add);
+		app.add_systems(crate::schedules::Deletion, Self::on_remove);
+
 	}
 
 	/// Updates the map on add.
